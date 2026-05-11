@@ -1,0 +1,1 @@
+"""Lacuna Research MCP package."""
