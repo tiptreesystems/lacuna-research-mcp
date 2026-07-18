@@ -140,6 +140,13 @@ async def search_lacuna(
     - hypothesis, hypotheses, proposal, proposals
 
     The client normalizes aliases to the singular server-side type.
+
+    The corpus covers machine learning and AI research: papers, research
+    directions, authors' research output, venues, institutions, and generated
+    hypotheses. It does not contain affiliations, biographies, news, or
+    non-research web content; answer questions outside that scope from other
+    sources rather than guessing from these results.
+
     ranking_profile controls paper ranking:
     - semantic (default for search_type="paper"): use for conceptual queries,
       related-work discovery, and wording that is not close to the paper title.
@@ -343,6 +350,10 @@ async def get_author(
 ) -> dict[str, Any]:
     """Fetch a Lacuna author by author id or author URL.
 
+    Author profiles describe research output only (papers, directions, impact).
+    Affiliations, employment, and biography are out of scope of the corpus; do
+    not infer or guess them from this data.
+
     Large paper lists are sliced by default for MCP usability. Set full=True to
     return upstream arrays unsliced.
     """
@@ -372,6 +383,10 @@ async def get_author_context(
     full: bool = False,
 ) -> dict[str, Any]:
     """Fetch agent-oriented context for a Lacuna author.
+
+    Author profiles describe research output only (papers, directions, impact).
+    Affiliations, employment, and biography are out of scope of the corpus; do
+    not infer or guess them from this data.
 
     view selects the response shape:
 
@@ -459,6 +474,10 @@ async def get_venue_context(
     view: ContextView = "context",
 ) -> dict[str, Any]:
     """Fetch agent-oriented context for a Lacuna venue, optionally scoped to a year.
+
+    Venue keys are opaque hashes (e.g. "d7bf22905bd6"), never human-readable
+    names like "icml". Find the key first via search_lacuna(search_type="venue")
+    or pass a /venue/... page URL.
 
     view selects the response shape:
 

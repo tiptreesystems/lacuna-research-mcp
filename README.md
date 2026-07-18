@@ -1,8 +1,14 @@
 # Lacuna Research MCP
 
-Standalone MCP server for the public Lacuna deployment at `https://lacuna.tiptreesystems.com`.
+MCP server for [Lacuna](https://lacuna.tiptreesystems.com), a research map for machine learning built by [Tiptree Systems](https://tiptreesystems.com).
 
-It does not depend on the local Lacuna repository.
+Lacuna extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. At the snapshot described in the [Lacuna paper](https://arxiv.org/abs/2606.26246), the map contains 15,259,720 concept elements from 733,795 paper pages, organized into 27,017 research directions. This server exposes that map as MCP tools, so a coding agent or assistant can search the literature inside its existing tool loop, with every answer linking back to the underlying pages.
+
+The server is standalone: it talks to the public Lacuna deployment at `https://lacuna.tiptreesystems.com` and does not depend on the Lacuna repository.
+
+## Scope
+
+The corpus covers machine learning and AI research: papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain affiliations, biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
 
 ## What it exposes
 
@@ -158,9 +164,15 @@ args = ["--from", "git+https://github.com/tiptreesystems/lacuna-research-mcp.git
 LACUNA_SITE_URL = "https://lacuna.tiptreesystems.com"
 ```
 
-## Claude Code config snippet
+## Claude Code
 
-Add this under the top-level `mcpServers` object in `~/.claude.json`:
+One command:
+
+```bash
+claude mcp add lacuna-research -- uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
+```
+
+Or add this under the top-level `mcpServers` object in `~/.claude.json`:
 
 ```json
 "lacuna-research": {
@@ -170,10 +182,22 @@ Add this under the top-level `mcpServers` object in `~/.claude.json`:
     "--from",
     "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
     "lacuna-research-mcp"
-  ],
-  "env": {
-    "LACUNA_SITE_URL": "https://lacuna.tiptreesystems.com"
-  }
+  ]
+}
+```
+
+## Claude Desktop
+
+Add this under `mcpServers` in `claude_desktop_config.json` (Settings → Developer → Edit Config):
+
+```json
+"lacuna-research": {
+  "command": "uvx",
+  "args": [
+    "--from",
+    "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
+    "lacuna-research-mcp"
+  ]
 }
 ```
 
@@ -183,7 +207,7 @@ After connecting the server, call:
 
 1. `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=10)`
 2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="papers", limit=10)` (semantic paper search by default)
-3. `get_hypothesis(hypothesis_id_or_url="8a0e96a771242126")`
+3. `get_hypothesis(hypothesis_id_or_url="bd35de182c2325ae")`
 4. `get_paper(artifact_id_or_url="art_79c57fbfec094f26b79c422cf08fed34")` (defaults to `view="context"`)
 5. `get_direction(cluster_id_or_url=25108)` (defaults to `view="context"`)
 
@@ -194,3 +218,8 @@ After connecting the server, call:
 - Search type aliases are normalized client-side, so `papers`, `directions`, and `hypotheses` are accepted and mapped to the server's singular values.
 - Most detail tools accept either the id returned by search or the corresponding Lacuna URL.
 - Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `content`, or `description` are normalized to absolute URLs.
+- Venue and institution keys are opaque hashes (for example `d7bf22905bd6`), never human-readable names like `icml`. Find the key with `search_lacuna(search_type="venue")` first, or pass a `/venue/...` page URL.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
