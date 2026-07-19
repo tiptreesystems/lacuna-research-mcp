@@ -18,8 +18,8 @@ def test_search_type_aliases_and_invalid_values() -> None:
 
 
 def test_search_ranking_profile_defaults_aliases_and_invalid_values() -> None:
-    assert tools._normalize_ranking_profile(None, "paper") == "semantic"
-    assert tools._normalize_ranking_profile("", "paper") == "semantic"
+    assert tools._normalize_ranking_profile(None, "paper") == "default"
+    assert tools._normalize_ranking_profile("", "paper") == "default"
     assert tools._normalize_ranking_profile(None, "all") == "default"
     assert tools._normalize_ranking_profile("lexical", "paper") == "default"
     assert tools._normalize_ranking_profile("bm25", "paper") == "bm25_title_abstract"
@@ -29,6 +29,35 @@ def test_search_ranking_profile_defaults_aliases_and_invalid_values() -> None:
         tools._normalize_ranking_profile("hybrid", "paper")
 
 
+def test_search_ranking_profile_type_compatibility() -> None:
+    assert tools._normalize_ranking_profile("semantic", "all") == "semantic"
+    assert tools._normalize_ranking_profile("bm25", "cluster") == "bm25_title_abstract"
+    assert tools._normalize_ranking_profile("lexical", "author") == "default"
+
+    with pytest.raises(ValueError, match="not supported for search_type 'author'"):
+        tools._normalize_ranking_profile("semantic", "author")
+    with pytest.raises(ValueError, match="not supported for search_type 'cluster'"):
+        tools._normalize_ranking_profile("semantic", "cluster")
+    with pytest.raises(ValueError, match="not supported for search_type 'author'"):
+        tools._normalize_ranking_profile("bm25", "author")
+    with pytest.raises(ValueError, match="not supported for search_type 'institution'"):
+        tools._normalize_ranking_profile("bm25_title_abstract", "institution")
+
+
+async def test_search_rejects_unsupported_profile_before_api_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raise AssertionError("api_payload should not be called")
+
+    monkeypatch.setattr(tools, "api_payload", fail_api_payload)
+
+    with pytest.raises(ValueError, match="not supported for search_type 'author'"):
+        await tools.search_lacuna("smith", search_type="authors", ranking_profile="semantic")
+
+
 async def test_search_metadata_uses_mcp_meta(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_api_payload(
         path: str, *, params: dict[str, Any] | None = None
@@ -36,7 +65,7 @@ async def test_search_metadata_uses_mcp_meta(monkeypatch: pytest.MonkeyPatch) ->
         assert path == "/api/v1/search"
         assert params is not None
         assert params["type"] == "paper"
-        assert params["ranking_profile"] == "semantic"
+        assert params["ranking_profile"] == "default"
         return {"requested_type": "upstream", "normalized_type": "upstream"}
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
@@ -49,7 +78,7 @@ async def test_search_metadata_uses_mcp_meta(monkeypatch: pytest.MonkeyPatch) ->
         "requested_type": "papers",
         "normalized_type": "paper",
         "requested_ranking_profile": None,
-        "normalized_ranking_profile": "semantic",
+        "normalized_ranking_profile": "default",
     }
 
 
@@ -311,6 +340,11 @@ async def test_paper_context_figure_limit_passthrough(monkeypatch: pytest.Monkey
 
     assert captured[0] == {"view": "compact", "figure_limit": 0}
     assert captured[1] == {"view": "compact"}
+
+
+async def test_paper_context_rejects_negative_figure_limit() -> None:
+    with pytest.raises(ValueError, match="figure_limit must be greater than or equal to 0"):
+        await tools.get_paper("art_ok", figure_limit=-1)
 
 
 async def test_author_context_truncates_nested_author_payload(

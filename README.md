@@ -56,14 +56,14 @@ through March 31, 2022.
 
 `search_lacuna` exposes these ranking profiles:
 
-- `semantic`
-  Default for `search_type="paper"`. Use for conceptual related-work queries, natural-language research needs, and wording that is not close to the paper title.
 - `default` / `lexical`
-  Use for exact-title searches, acronym or keyword lookups, and known-item queries where literal title/metadata matching matters most.
+  The default for all searches. For papers, this uses the server's production lexical+semantic ranker with graceful fallback.
+- `semantic`
+  Use for semantic-only paper retrieval when you explicitly want to exclude the lexical ranking leg. Only supported for `paper` and `all` searches (only papers have semantic embeddings).
 - `bm25_title_abstract` / `bm25`
-  Use for lexical matching constrained to title and abstract.
+  Use for lexical matching constrained to title and abstract. Rejected for `author` and `institution` searches (those records have no title or abstract fields).
 
-Non-paper searches use the server default unless `ranking_profile` is provided. Hybrid search is not integrated yet.
+All searches use the server default unless `ranking_profile` is provided. Profile/type combinations that can never match raise an error instead of returning zero results.
 
 ## Install
 
@@ -206,7 +206,7 @@ Add this under `mcpServers` in `claude_desktop_config.json` (Settings → Develo
 After connecting the server, call:
 
 1. `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=10)`
-2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="papers", limit=10)` (semantic paper search by default)
+2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="papers", limit=10)` (production lexical+semantic paper ranking by default)
 3. `get_hypothesis(hypothesis_id_or_url="bd35de182c2325ae")`
 4. `get_paper(artifact_id_or_url="art_79c57fbfec094f26b79c422cf08fed34")` (defaults to `view="context"`)
 5. `get_direction(cluster_id_or_url=25108)` (defaults to `view="context"`)
@@ -214,7 +214,7 @@ After connecting the server, call:
 ## Notes
 
 - `get_paper` and `get_direction` default to `view="context"`. These context views request Lacuna's compact agent-oriented payloads by default to keep MCP responses small. Paper context includes `summary_markdown`, abstract, authors, and figures; direction context includes `summary_markdown`, capped papers/authors/related directions, and truncation markers. Use `view="full"` when you need the raw metadata, and the other paper views (`preview`, `blog`, `figures`, `concepts`, `neighbors`) when you want one isolated sub-resource.
-- Paper search defaults to `ranking_profile="semantic"`. Set `ranking_profile="lexical"` or `"bm25_title_abstract"` for exact-title, acronym, or keyword-heavy known-item searches.
+- Paper search defaults to the server's production lexical+semantic ranker. Set `ranking_profile="semantic"` for semantic-only retrieval or `"bm25_title_abstract"` for title-and-abstract lexical matching.
 - Search type aliases are normalized client-side, so `papers`, `directions`, and `hypotheses` are accepted and mapped to the server's singular values.
 - Most detail tools accept either the id returned by search or the corresponding Lacuna URL.
 - Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `content`, or `description` are normalized to absolute URLs.

@@ -44,12 +44,14 @@ class FakeResponse:
         status_code: int = 200,
         text: str = "",
         url: str = "https://lacuna.example/api",
+        headers: dict[str, str] | None = None,
         json_error: Exception | None = None,
     ) -> None:
         self.payload = payload
         self.status_code = status_code
         self.text = text
         self.url = url
+        self.headers = httpx.Headers(headers)
         self.reason_phrase = "reason"
         self.json_error = json_error
 
@@ -233,6 +235,51 @@ async def test_api_retries_transient_status_then_succeeds(
     assert await client.api_get("/transient") == {"ok": True}
     assert len(fake_client.calls) == 3
     assert "Retrying Lacuna API request" in caplog.text
+
+
+async def test_api_honors_retry_after_for_rate_limits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_runtime_config(monkeypatch, max_retries=1)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(client.asyncio, "sleep", fake_sleep)
+    fake_client = FakeAsyncClient(
+        sequence=[
+            FakeResponse({}, status_code=429, headers={"Retry-After": "12"}),
+            FakeResponse({"ok": True}),
+        ]
+    )
+    patch_client(monkeypatch, fake_client)
+
+    assert await client.api_get("/rate-limited") == {"ok": True}
+    assert sleeps == [12.0]
+
+
+async def test_api_uses_backoff_for_invalid_retry_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_runtime_config(monkeypatch, max_retries=1)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(client.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(client, "RETRY_BACKOFF_BASE_SECONDS", 0.25)
+    fake_client = FakeAsyncClient(
+        sequence=[
+            FakeResponse({}, status_code=429, headers={"Retry-After": "invalid"}),
+            FakeResponse({"ok": True}),
+        ]
+    )
+    patch_client(monkeypatch, fake_client)
+
+    assert await client.api_get("/rate-limited") == {"ok": True}
+    assert sleeps == [0.25]
 
 
 async def test_api_retries_transport_errors_then_succeeds(

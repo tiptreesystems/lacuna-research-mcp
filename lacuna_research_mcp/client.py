@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 from typing import Any, NoReturn
 
 import httpx
@@ -20,6 +22,7 @@ from lacuna_research_mcp.errors import LacunaMCPError
 from lacuna_research_mcp.normalize import normalize_url_fields
 
 logger = logging.getLogger(__name__)
+
 
 class LacunaRuntime:
     """Owns runtime configuration and the event-loop-bound HTTP client."""
@@ -209,8 +212,33 @@ def _log_retry(
     )
 
 
-async def _sleep_before_retry(attempt_index: int) -> None:
-    await asyncio.sleep(RETRY_BACKOFF_BASE_SECONDS * (2**attempt_index))
+def _retry_after_seconds(response: httpx.Response | None) -> float | None:
+    if response is None or response.status_code != 429:
+        return None
+    value = response.headers.get("Retry-After")
+    if not value:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        try:
+            retry_at = parsedate_to_datetime(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if retry_at.tzinfo is None:
+            return None
+        seconds = retry_at.timestamp() - time.time()
+    if not math.isfinite(seconds):
+        return None
+    return max(0.0, seconds)
+
+
+async def _sleep_before_retry(attempt: _RequestAttempt, attempt_index: int) -> None:
+    retry_after = _retry_after_seconds(attempt.response)
+    delay = (
+        retry_after if retry_after is not None else RETRY_BACKOFF_BASE_SECONDS * (2**attempt_index)
+    )
+    await asyncio.sleep(delay)
 
 
 def _terminal_response_or_raise(
@@ -269,7 +297,7 @@ async def api_get(path: str, *, params: dict[str, Any] | None = None) -> Any:
         _log_slow_response(url, attempt)
         if _should_retry(attempt, attempt_index, config.max_retries):
             _log_retry(url, attempt, attempt_index, config.max_retries)
-            await _sleep_before_retry(attempt_index)
+            await _sleep_before_retry(attempt, attempt_index)
             continue
 
         response = _terminal_response_or_raise(url, attempt, config)

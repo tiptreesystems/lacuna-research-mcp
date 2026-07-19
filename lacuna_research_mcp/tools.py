@@ -53,6 +53,20 @@ _SEARCH_RANKING_PROFILES = {
     "semantic": "semantic",
 }
 
+# Server search documents for these types lack the fields the profile ranks on,
+# so the combination is guaranteed to return zero hits. "all" always includes
+# papers, so it is never rejected.
+_RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
+    "bm25_title_abstract": (
+        frozenset({"author", "institution"}),
+        "author and institution records have no title or abstract fields",
+    ),
+    "semantic": (
+        frozenset({"author", "institution", "cluster", "hypothesis", "venue"}),
+        "only papers have semantic embeddings",
+    ),
+}
+
 
 def _normalize_search_type(search_type: str | None) -> str:
     value = "" if search_type is None else str(search_type).strip().lower()
@@ -67,13 +81,21 @@ def _normalize_search_type(search_type: str | None) -> str:
 def _normalize_ranking_profile(ranking_profile: str | None, search_type: str) -> str:
     value = "" if ranking_profile is None else str(ranking_profile).strip().lower()
     if not value:
-        return "semantic" if search_type == "paper" else "default"
+        return "default"
     if value in _SEARCH_RANKING_PROFILES:
-        return _SEARCH_RANKING_PROFILES[value]
+        normalized = _SEARCH_RANKING_PROFILES[value]
+        unsupported_types, reason = _RANKING_PROFILE_UNSUPPORTED_TYPES.get(
+            normalized, (frozenset(), "")
+        )
+        if search_type in unsupported_types:
+            raise ValueError(
+                f"ranking_profile {ranking_profile!r} is not supported for "
+                f"search_type {search_type!r} ({reason}); it would always return "
+                "zero results. Use the default profile instead."
+            )
+        return normalized
     valid_values = ", ".join(sorted(_SEARCH_RANKING_PROFILES))
-    raise ValueError(
-        f"Invalid ranking_profile {ranking_profile!r}. Valid values: {valid_values}"
-    )
+    raise ValueError(f"Invalid ranking_profile {ranking_profile!r}. Valid values: {valid_values}")
 
 
 _PAPER_VIEW_ROUTES: dict[str, str] = {
@@ -148,15 +170,18 @@ async def search_lacuna(
     sources rather than guessing from these results.
 
     ranking_profile controls paper ranking:
-    - semantic (default for search_type="paper"): use for conceptual queries,
-      related-work discovery, and wording that is not close to the paper title.
-    - default / lexical: use for exact-title, author/title keyword, acronym, or
-      known-item lookups where literal token matching is more important.
+    - default / lexical (default): use the server's production paper ranker,
+      which combines lexical and semantic retrieval with graceful fallback.
+    - semantic: use semantic-only retrieval for conceptual queries when you
+      explicitly want to exclude the lexical ranking leg.
     - bm25_title_abstract: use when you want lexical matching constrained to
       title and abstract fields.
 
-    Non-paper searches default to the server's default ranking. Hybrid search is
-    not exposed yet.
+    All searches default to the server's production ranking profile. semantic
+    is only supported for paper and all searches (only papers have semantic
+    embeddings); bm25_title_abstract is rejected for author and institution
+    searches (those records have no title or abstract fields). Unsupported
+    combinations raise an error instead of returning zero results.
     date_from and date_to are inclusive publication-date bounds. Accepted
     formats are YYYY, YYYY-MM, and YYYY-MM-DD.
     fields selects the server-side field projection for hits (e.g. a lean field
@@ -336,7 +361,9 @@ async def get_paper(
     if normalized_view == "context":
         params = {"view": "compact"}
         if figure_limit is not None:
-            params["figure_limit"] = max(0, figure_limit)
+            if figure_limit < 0:
+                raise ValueError("figure_limit must be greater than or equal to 0")
+            params["figure_limit"] = figure_limit
     return await _paper_payload(artifact_id_or_url, route_template, params=params)
 
 
