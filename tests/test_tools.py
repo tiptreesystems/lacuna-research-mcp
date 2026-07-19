@@ -31,13 +31,20 @@ def test_search_ranking_profile_defaults_aliases_and_invalid_values() -> None:
 
 def test_search_ranking_profile_type_compatibility() -> None:
     assert tools._normalize_ranking_profile("semantic", "all") == "semantic"
-    assert tools._normalize_ranking_profile("bm25", "cluster") == "bm25_title_abstract"
     assert tools._normalize_ranking_profile("lexical", "author") == "default"
 
     with pytest.raises(ValueError, match="not supported for search_type 'author'"):
         tools._normalize_ranking_profile("bm25", "author")
     with pytest.raises(ValueError, match="not supported for search_type 'institution'"):
         tools._normalize_ranking_profile("bm25_title_abstract", "institution")
+
+
+@pytest.mark.parametrize(
+    "search_type",
+    ["all", "paper", "cluster", "hypothesis", "venue"],
+)
+def test_bm25_profile_accepts_every_supported_search_type(search_type: str) -> None:
+    assert tools._normalize_ranking_profile("bm25", search_type) == "bm25_title_abstract"
 
 
 @pytest.mark.parametrize(

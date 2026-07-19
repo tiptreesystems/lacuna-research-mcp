@@ -305,6 +305,7 @@ async def test_api_honors_retry_after_for_rate_limits(
         (503, "12", None),
         (429, "-1", 0.0),
         (429, "nan", None),
+        (429, "Sun, 06 Nov 1994 08:49:37 -0000", None),
     ],
 )
 def test_retry_after_parsing_edge_cases(
