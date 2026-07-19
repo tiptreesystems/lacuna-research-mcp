@@ -63,7 +63,7 @@ through March 31, 2022.
 - `bm25_title_abstract` / `bm25`
   Use for lexical matching constrained to title and abstract. Rejected for `author` and `institution` searches (those records have no title or abstract fields).
 
-All searches use the server default unless `ranking_profile` is provided. Profile/type combinations that can never match raise an error instead of returning zero results.
+All searches use the server default unless `ranking_profile` is provided. The MCP rejects unsupported profile/type combinations because the server would otherwise fall back to substring search and silently ignore the requested ranking profile.
 
 ## Install
 

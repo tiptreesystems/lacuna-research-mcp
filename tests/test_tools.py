@@ -34,7 +34,10 @@ def test_search_ranking_profile_type_compatibility() -> None:
     assert tools._normalize_ranking_profile("bm25", "cluster") == "bm25_title_abstract"
     assert tools._normalize_ranking_profile("lexical", "author") == "default"
 
-    with pytest.raises(ValueError, match="not supported for search_type 'author'"):
+    with pytest.raises(
+        ValueError,
+        match="fall back to substring search and silently ignore the requested ranking profile",
+    ):
         tools._normalize_ranking_profile("semantic", "author")
     with pytest.raises(ValueError, match="not supported for search_type 'cluster'"):
         tools._normalize_ranking_profile("semantic", "cluster")

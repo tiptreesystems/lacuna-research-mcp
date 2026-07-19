@@ -53,9 +53,10 @@ _SEARCH_RANKING_PROFILES = {
     "semantic": "semantic",
 }
 
-# Server search documents for these types lack the fields the profile ranks on,
-# so the combination is guaranteed to return zero hits. "all" always includes
-# papers, so it is never rejected.
+# Elasticsearch documents for these types lack the fields the profile ranks on,
+# so that search leg cannot match them; the server would then fall back to
+# substring search and ignore the requested profile. "all" includes papers, so
+# it is never rejected.
 _RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
     "bm25_title_abstract": (
         frozenset({"author", "institution"}),
@@ -90,8 +91,9 @@ def _normalize_ranking_profile(ranking_profile: str | None, search_type: str) ->
         if search_type in unsupported_types:
             raise ValueError(
                 f"ranking_profile {ranking_profile!r} is not supported for "
-                f"search_type {search_type!r} ({reason}); it would always return "
-                "zero results. Use the default profile instead."
+                f"search_type {search_type!r} ({reason}); the server would fall "
+                "back to substring search and silently ignore the requested "
+                "ranking profile. Use the default profile instead."
             )
         return normalized
     valid_values = ", ".join(sorted(_SEARCH_RANKING_PROFILES))
@@ -181,7 +183,8 @@ async def search_lacuna(
     is only supported for paper and all searches (only papers have semantic
     embeddings); bm25_title_abstract is rejected for author and institution
     searches (those records have no title or abstract fields). Unsupported
-    combinations raise an error instead of returning zero results.
+    combinations raise an error because the server would otherwise fall back
+    to substring search and silently ignore the requested ranking profile.
     date_from and date_to are inclusive publication-date bounds. Accepted
     formats are YYYY, YYYY-MM, and YYYY-MM-DD.
     fields restricts and weights the text fields used for lexical ranking
