@@ -73,9 +73,7 @@ def _parse_site_url(value: str | None) -> str:
     raw = (value or DEFAULT_SITE_URL).strip().rstrip("/")
     parsed = urlparse(raw)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError(
-            f"Invalid LACUNA_SITE_URL: must be an http(s) URL, got {value!r}"
-        )
+        raise ValueError(f"Invalid LACUNA_SITE_URL: must be an http(s) URL, got {value!r}")
     if parsed.query or parsed.fragment:
         raise ValueError(
             f"Invalid LACUNA_SITE_URL: must not contain a query string or fragment, got {value!r}"

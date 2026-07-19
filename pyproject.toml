@@ -3,13 +3,13 @@ name = "lacuna-research-mcp"
 version = "0.1.0"
 description = "MCP server for Lacuna, a research map for machine learning: search directions, papers, authors, venues, and AI-generated research proposals."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Tiptree Advanced Systems Corporation", email = "martin@tiptreesystems.com" }]
 keywords = ["mcp", "model-context-protocol", "research", "machine-learning", "literature-search", "lacuna"]
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
@@ -49,7 +49,7 @@ dev = [
 asyncio_mode = "auto"
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
