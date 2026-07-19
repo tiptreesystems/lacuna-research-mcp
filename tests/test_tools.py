@@ -34,17 +34,22 @@ def test_search_ranking_profile_type_compatibility() -> None:
     assert tools._normalize_ranking_profile("bm25", "cluster") == "bm25_title_abstract"
     assert tools._normalize_ranking_profile("lexical", "author") == "default"
 
-    with pytest.raises(
-        ValueError,
-        match="fall back to substring search and silently ignore the requested ranking profile",
-    ):
-        tools._normalize_ranking_profile("semantic", "author")
-    with pytest.raises(ValueError, match="not supported for search_type 'cluster'"):
-        tools._normalize_ranking_profile("semantic", "cluster")
     with pytest.raises(ValueError, match="not supported for search_type 'author'"):
         tools._normalize_ranking_profile("bm25", "author")
     with pytest.raises(ValueError, match="not supported for search_type 'institution'"):
         tools._normalize_ranking_profile("bm25_title_abstract", "institution")
+
+
+@pytest.mark.parametrize(
+    "search_type",
+    ["author", "institution", "cluster", "hypothesis", "venue"],
+)
+def test_semantic_profile_rejects_every_unsupported_search_type(search_type: str) -> None:
+    with pytest.raises(
+        ValueError,
+        match="fall back to substring search and silently ignore the requested ranking profile",
+    ):
+        tools._normalize_ranking_profile("semantic", search_type)
 
 
 async def test_search_rejects_unsupported_profile_before_api_call(

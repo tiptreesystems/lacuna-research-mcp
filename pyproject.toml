@@ -55,6 +55,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["lacuna_research_mcp"]
 
+[tool.setuptools.package-data]
+lacuna_research_mcp = ["py.typed"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

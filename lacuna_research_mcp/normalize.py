@@ -69,7 +69,7 @@ def normalize_url_fields(
             return value
 
         if isinstance(value, dict):
-            result = {}
+            result: dict[object, object] = {}
             for key, item in value.items():
                 if isinstance(item, str):
                     if key == "url" or key.endswith("_url"):

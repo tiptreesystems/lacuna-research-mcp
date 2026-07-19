@@ -171,28 +171,31 @@ async def search_lacuna(
     non-research web content; answer questions outside that scope from other
     sources rather than guessing from these results.
 
-    ranking_profile controls paper ranking:
-    - default / lexical (default): use the server's production paper ranker,
-      which combines lexical and semantic retrieval with graceful fallback.
-    - semantic: use semantic-only retrieval for conceptual queries when you
-      explicitly want to exclude the lexical ranking leg.
+    ranking_profile controls server-side ranking:
+    - default / lexical (default): use the server's default ranker. With
+      search_type="paper", sort="relevance", and fields unset, it combines lexical
+      and semantic retrieval with graceful fallback.
+    - semantic: use embedding-based paper retrieval for conceptual queries. The
+      normal lexical ranking leg is omitted, but exact-title matches may still
+      be overlaid by the server.
     - bm25_title_abstract: use when you want lexical matching constrained to
       title and abstract fields.
 
-    All searches default to the server's production ranking profile. semantic
-    is only supported for paper and all searches (only papers have semantic
-    embeddings); bm25_title_abstract is rejected for author and institution
-    searches (those records have no title or abstract fields). Unsupported
-    combinations raise an error because the server would otherwise fall back
-    to substring search and silently ignore the requested ranking profile.
+    All searches default to the server's production ranking profile. The combined
+    lexical+semantic ranker is selected only for relevance-sorted paper searches
+    with fields unset; search_type defaults to all. semantic is only supported for
+    paper and all searches (only papers have semantic embeddings);
+    bm25_title_abstract is rejected for author and institution searches (those
+    records have no title or abstract fields). Unsupported combinations raise an
+    error because the server would otherwise fall back to substring search and
+    silently ignore the requested ranking profile.
     date_from and date_to are inclusive publication-date bounds. Accepted
     formats are YYYY, YYYY-MM, and YYYY-MM-DD.
     fields restricts and weights the text fields used for lexical ranking
     (comma-separated, optional ^weights, e.g. "title^4,abstract"). It does not
-    change the response shape. With the default ranking profile, setting fields
-    selects the experimental lexical ranker and bypasses the default
-    lexical+semantic paper ranker. Leave unset unless you specifically want
-    that.
+    change the response shape. Setting fields selects the experimental lexical
+    ranker; for a default relevance-sorted paper search, it also bypasses the
+    lexical+semantic ranker. Leave unset unless you specifically want that.
     debug echoes the requested/normalized type and ranking profile back in
     `_mcp_meta`; off by default to keep responses lean.
     """

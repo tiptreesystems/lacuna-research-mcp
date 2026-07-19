@@ -261,6 +261,24 @@ async def test_api_honors_retry_after_for_rate_limits(
     assert sleeps == [12.0]
 
 
+@pytest.mark.parametrize(
+    ("status_code", "retry_after", "expected"),
+    [
+        (503, "12", None),
+        (429, "-1", 0.0),
+        (429, "nan", None),
+    ],
+)
+def test_retry_after_parsing_edge_cases(
+    status_code: int,
+    retry_after: str,
+    expected: float | None,
+) -> None:
+    response = FakeResponse(status_code=status_code, headers={"Retry-After": retry_after})
+
+    assert client._retry_after_seconds(response) == expected
+
+
 async def test_api_caps_excessive_retry_after(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

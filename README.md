@@ -13,7 +13,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 ## What it exposes
 
 - `search_lacuna`
-  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Paper searches default to the server's production lexical+semantic ranker. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
+  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Explicit paper searches (`search_type="paper"`) use the server's production lexical+semantic ranker when the other ranking arguments remain at their defaults. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
 - `get_hypothesis(hypothesis_id_or_url, view="context")`
   Hypothesis/proposal. `view="context"` (default) is a compact single-fetch proposal context (summary, abstract, linked directions); `view="full"` returns the full two-endpoint merge with version history and signal counts.
 - `get_direction(cluster_id_or_url, view="context")`
@@ -31,7 +31,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 
 | MCP tool | Lacuna API endpoint |
 | --- | --- |
-| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`; with the default ranking profile it selects the experimental lexical ranker, bypassing the default lexical+semantic paper ranker; `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
+| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker; `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
 | `get_hypothesis(hypothesis_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/hypothesis/{hypothesis_id}?view=compact`; `view="full"` → `GET /api/v1/hypotheses/{hypothesis_id}` and `GET /api/v1/context/hypothesis/{hypothesis_id}` |
 | `get_direction(cluster_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/direction/{cluster_id}?view=compact`; `view="full"` → `GET /api/v1/clusters/{cluster_id}` |
 | `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
@@ -57,9 +57,9 @@ through March 31, 2022.
 `search_lacuna` exposes these ranking profiles:
 
 - `default` / `lexical`
-  The default for all searches. For papers, this uses the server's production lexical+semantic ranker with graceful fallback.
+  The default profile for all searches. With `search_type="paper"`, `sort="relevance"`, and `fields` unset, it uses the server's production lexical+semantic ranker with graceful fallback. The MCP's default `search_type="all"` uses the server's default lexical ranking instead.
 - `semantic`
-  Use for semantic-only paper retrieval when you explicitly want to exclude the lexical ranking leg. Only supported for `paper` and `all` searches (only papers have semantic embeddings).
+  Use for embedding-based paper retrieval. The semantic query omits the normal lexical ranking leg, but the server can still overlay exact-title lexical matches. Only supported for `paper` and `all` searches (only papers have semantic embeddings).
 - `bm25_title_abstract` / `bm25`
   Use for lexical matching constrained to title and abstract. Rejected for `author` and `institution` searches (those records have no title or abstract fields).
 
@@ -139,7 +139,7 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
 - `lacuna_research_mcp/tools.py`
   MCP tool functions. Each tool normalizes its inputs, calls the matching Lacuna API endpoint through the shared client helpers, and returns JSON-compatible data.
 - `lacuna_research_mcp/client.py`
-  Runtime HTTP access to Lacuna: the event-loop-bound `httpx.AsyncClient`, retry handling, error wrapping, JSON parsing, URL normalization on responses, and `_api_get`/`_api_object`/`_api_payload`.
+  Runtime HTTP access to Lacuna: the event-loop-bound `httpx.AsyncClient`, retry handling, error wrapping, JSON parsing, URL normalization on responses, and `api_get`/`api_object`/`api_payload`.
 - `lacuna_research_mcp/config.py`
   Runtime constants, `RuntimeConfig`, package user-agent construction, and environment parsing.
 - `lacuna_research_mcp/ids.py`
@@ -213,8 +213,8 @@ After connecting the server, call:
 
 ## Notes
 
-- `get_paper` and `get_direction` default to `view="context"`. These context views request Lacuna's compact agent-oriented payloads by default to keep MCP responses small. Paper context includes `summary_markdown`, abstract, authors, and figures; direction context includes `summary_markdown`, capped papers/authors/related directions, and truncation markers. Use `view="full"` when you need the raw metadata, and the other paper views (`preview`, `blog`, `figures`, `concepts`, `neighbors`) when you want one isolated sub-resource.
-- Paper search defaults to the server's production lexical+semantic ranker. Set `ranking_profile="semantic"` for semantic-only retrieval or `"bm25_title_abstract"` for title-and-abstract lexical matching.
+- `get_paper` and `get_direction` default to `view="context"`. These context views request Lacuna's compact agent-oriented payloads by default to keep MCP responses small. Paper context includes `summary_markdown` when available (otherwise `abstract`), authors, and figures; direction context includes `summary_markdown`, capped papers/authors/related directions, and truncation markers. Use `view="full"` when you need the raw metadata, and the other paper views (`preview`, `blog`, `figures`, `concepts`, `neighbors`) when you want one isolated sub-resource.
+- An explicit relevance-sorted paper search with no custom `fields` defaults to the server's production lexical+semantic ranker. Set `ranking_profile="semantic"` for embedding-based retrieval (with a possible exact-title overlay) or `"bm25_title_abstract"` for title-and-abstract lexical matching.
 - Search type aliases are normalized client-side, so `papers`, `directions`, and `hypotheses` are accepted and mapped to the server's singular values.
 - Most detail tools accept either the id returned by search or the corresponding Lacuna URL.
 - Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `content`, or `description` are normalized to absolute URLs.

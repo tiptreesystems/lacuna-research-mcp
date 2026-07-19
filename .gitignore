@@ -4,6 +4,10 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+.coverage
 .pytest_cache/
+.ruff_cache/
+build/
+dist/
 claude.mcp.json
 codex.mcp.toml
