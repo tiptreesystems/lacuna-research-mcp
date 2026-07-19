@@ -12,6 +12,7 @@ import httpx
 
 from lacuna_research_mcp.config import (
     DEFAULT_RUNTIME_CONFIG,
+    RETRY_AFTER_MAX_SECONDS,
     RETRY_BACKOFF_BASE_SECONDS,
     RETRY_STATUS_CODES,
     SLOW_RESPONSE_SECONDS,
@@ -230,7 +231,9 @@ def _retry_after_seconds(response: httpx.Response | None) -> float | None:
         seconds = retry_at.timestamp() - time.time()
     if not math.isfinite(seconds):
         return None
-    return max(0.0, seconds)
+    # Cap so a misconfigured server or proxy cannot suspend the call for
+    # hours; a still-limiting server surfaces as a terminal 429 after retries.
+    return min(max(0.0, seconds), RETRY_AFTER_MAX_SECONDS)
 
 
 async def _sleep_before_retry(attempt: _RequestAttempt, attempt_index: int) -> None:

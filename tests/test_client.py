@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from typing import Any
 
 import httpx
@@ -257,6 +259,52 @@ async def test_api_honors_retry_after_for_rate_limits(
 
     assert await client.api_get("/rate-limited") == {"ok": True}
     assert sleeps == [12.0]
+
+
+async def test_api_caps_excessive_retry_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_runtime_config(monkeypatch, max_retries=1)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(client.asyncio, "sleep", fake_sleep)
+    fake_client = FakeAsyncClient(
+        sequence=[
+            FakeResponse({}, status_code=429, headers={"Retry-After": "999999"}),
+            FakeResponse({"ok": True}),
+        ]
+    )
+    patch_client(monkeypatch, fake_client)
+
+    assert await client.api_get("/rate-limited") == {"ok": True}
+    assert sleeps == [config.RETRY_AFTER_MAX_SECONDS]
+
+
+async def test_api_honors_http_date_retry_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_runtime_config(monkeypatch, max_retries=1)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(client.asyncio, "sleep", fake_sleep)
+    retry_at = datetime.now(UTC) + timedelta(seconds=10)
+    fake_client = FakeAsyncClient(
+        sequence=[
+            FakeResponse({}, status_code=429, headers={"Retry-After": format_datetime(retry_at)}),
+            FakeResponse({"ok": True}),
+        ]
+    )
+    patch_client(monkeypatch, fake_client)
+
+    assert await client.api_get("/rate-limited") == {"ok": True}
+    assert len(sleeps) == 1
+    assert 0.0 < sleeps[0] <= 10.0
 
 
 async def test_api_uses_backoff_for_invalid_retry_after(
