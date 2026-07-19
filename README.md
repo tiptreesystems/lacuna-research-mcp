@@ -65,6 +65,8 @@ through March 31, 2022.
 
 All searches use the server default unless `ranking_profile` is provided. The MCP rejects unsupported profile/type combinations because the server would otherwise fall back to substring search and silently ignore the requested ranking profile.
 
+`sort` accepts `relevance` (default), `year_desc`, and `year_asc`. Year sorts cannot be combined with `ranking_profile="semantic"` — the server would silently ignore the sort — so the MCP rejects that combination; for recent-and-relevant queries, keep semantic ranking and constrain recency with `date_from`/`date_to` instead.
+
 ## Install
 
 ### With uv

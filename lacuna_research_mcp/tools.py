@@ -68,6 +68,8 @@ _RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
     ),
 }
 
+_SEARCH_SORTS = frozenset({"relevance", "year_desc", "year_asc"})
+
 
 def _normalize_search_type(search_type: str | None) -> str:
     value = "" if search_type is None else str(search_type).strip().lower()
@@ -98,6 +100,16 @@ def _normalize_ranking_profile(ranking_profile: str | None, search_type: str) ->
         return normalized
     valid_values = ", ".join(sorted(_SEARCH_RANKING_PROFILES))
     raise ValueError(f"Invalid ranking_profile {ranking_profile!r}. Valid values: {valid_values}")
+
+
+def _normalize_sort(sort: str | None) -> str:
+    value = "" if sort is None else str(sort).strip().lower()
+    if not value:
+        return "relevance"
+    if value in _SEARCH_SORTS:
+        return value
+    valid_values = ", ".join(sorted(_SEARCH_SORTS))
+    raise ValueError(f"Invalid sort {sort!r}. Valid values: {valid_values}")
 
 
 _PAPER_VIEW_ROUTES: dict[str, str] = {
@@ -189,6 +201,10 @@ async def search_lacuna(
     records have no title or abstract fields). Unsupported combinations raise an
     error because the server would otherwise fall back to substring search and
     silently ignore the requested ranking profile.
+    sort orders results: relevance (default), year_desc, or year_asc. Year
+    sorts cannot be combined with ranking_profile="semantic" (the server would
+    silently ignore the sort); for recent-and-relevant queries, keep semantic
+    ranking and constrain recency with date_from/date_to instead.
     date_from and date_to are inclusive publication-date bounds. Accepted
     formats are YYYY, YYYY-MM, and YYYY-MM-DD.
     fields restricts and weights the text fields used for lexical ranking
@@ -201,12 +217,20 @@ async def search_lacuna(
     """
     normalized_type = _normalize_search_type(search_type)
     normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, normalized_type)
+    normalized_sort = _normalize_sort(sort)
+    if normalized_ranking_profile == "semantic" and normalized_sort != "relevance":
+        raise ValueError(
+            f"sort {sort!r} is not supported with ranking_profile 'semantic'; "
+            "the server would silently ignore the sort and return results in "
+            "semantic-score order. Use date_from/date_to to constrain recency "
+            "while keeping semantic relevance ordering."
+        )
     params: dict[str, Any] = {
         "q": query,
         "type": normalized_type,
         "limit": max(1, min(limit, SEARCH_MAX_LIMIT)),
         "offset": max(0, offset),
-        "sort": sort,
+        "sort": normalized_sort,
         "ranking_profile": normalized_ranking_profile,
     }
     if date_from is not None:

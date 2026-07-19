@@ -66,6 +66,54 @@ async def test_search_rejects_unsupported_profile_before_api_call(
         await tools.search_lacuna("smith", search_type="authors", ranking_profile="semantic")
 
 
+def test_search_sort_normalization_and_invalid_values() -> None:
+    assert tools._normalize_sort(None) == "relevance"
+    assert tools._normalize_sort("") == "relevance"
+    assert tools._normalize_sort("relevance") == "relevance"
+    assert tools._normalize_sort("Year_Desc") == "year_desc"
+    assert tools._normalize_sort("year_asc") == "year_asc"
+
+    with pytest.raises(ValueError, match="Invalid sort 'date'"):
+        tools._normalize_sort("date")
+
+
+@pytest.mark.parametrize("sort", ["year_desc", "year_asc"])
+async def test_search_rejects_semantic_year_sort_before_api_call(
+    monkeypatch: pytest.MonkeyPatch, sort: str
+) -> None:
+    async def fail_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raise AssertionError("api_payload should not be called")
+
+    monkeypatch.setattr(tools, "api_payload", fail_api_payload)
+
+    with pytest.raises(ValueError, match="not supported with ranking_profile 'semantic'"):
+        await tools.search_lacuna(
+            "graph retrieval", search_type="paper", ranking_profile="semantic", sort=sort
+        )
+
+
+async def test_search_passes_year_sort_with_default_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen_params: dict[str, Any] = {}
+
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert params is not None
+        seen_params.update(params)
+        return {}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    await tools.search_lacuna("graph retrieval", search_type="paper", sort="year_desc")
+
+    assert seen_params["sort"] == "year_desc"
+    assert seen_params["ranking_profile"] == "default"
+
+
 async def test_search_metadata_uses_mcp_meta(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_api_payload(
         path: str, *, params: dict[str, Any] | None = None
