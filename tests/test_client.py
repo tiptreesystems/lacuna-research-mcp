@@ -105,17 +105,55 @@ def test_lazy_runtime_config_uses_environment_without_failing_import(
     assert client.runtime_config().site_url == "https://lacuna.example"
 
 
-def test_client_is_recreated_when_event_loop_changes() -> None:
-    async def get_client() -> httpx.AsyncClient:
+def test_client_is_recreated_when_event_loop_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    class LoopBoundHTTPClient:
+        instances: list[LoopBoundHTTPClient] = []
+
+        def __init__(self, **_kwargs: Any) -> None:
+            self.loop = asyncio.get_running_loop()
+            self.close_attempts = 0
+            self.instances.append(self)
+
+        async def aclose(self) -> None:
+            self.close_attempts += 1
+            if self.loop.is_closed():
+                raise RuntimeError("Event loop is closed")
+
+    async def get_client() -> Any:
         return await client.get_http_client()
+
+    monkeypatch.setattr(client.httpx, "AsyncClient", LoopBoundHTTPClient)
 
     first_client = asyncio.run(get_client())
     second_client = asyncio.run(get_client())
 
     assert first_client is not second_client
-    assert first_client.is_closed
-    assert not second_client.is_closed
+    assert first_client.close_attempts == 1
+    assert second_client.close_attempts == 0
+    assert LoopBoundHTTPClient.instances == [first_client, second_client]
+
     asyncio.run(client.close_http_client())
+    assert second_client.close_attempts == 1
+    assert client.RUNTIME._client is None
+    assert client.RUNTIME._client_loop is None
+
+
+async def test_close_clears_client_state_when_aclose_fails() -> None:
+    class FailingHTTPClient:
+        async def aclose(self) -> None:
+            raise RuntimeError("close failed")
+
+    failing_client = FailingHTTPClient()
+    client.RUNTIME._client = failing_client  # type: ignore[assignment]
+    client.RUNTIME._client_loop = asyncio.get_running_loop()
+    client.RUNTIME._client_stale = True
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        await client.close_http_client()
+
+    assert client.RUNTIME._client is None
+    assert client.RUNTIME._client_loop is None
+    assert client.RUNTIME._client_stale is False
 
 
 async def test_client_includes_bearer_token_header(monkeypatch: pytest.MonkeyPatch) -> None:

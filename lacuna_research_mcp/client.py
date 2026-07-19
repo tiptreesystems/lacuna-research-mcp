@@ -68,8 +68,12 @@ class LacunaRuntime:
         loop = asyncio.get_running_loop()
         async with self._client_lock(loop):
             config = self.runtime_config()
-            if self._client is not None and (self._client_stale or self._client_loop is not loop):
-                await self._close_stale_client(self._client)
+            client_loop_changed = self._client_loop is not loop
+            if self._client is not None and (self._client_stale or client_loop_changed):
+                await self._close_stale_client(
+                    self._client,
+                    best_effort=client_loop_changed,
+                )
             if self._client is None:
                 self._client = httpx.AsyncClient(
                     timeout=config.http_timeout,
@@ -82,12 +86,10 @@ class LacunaRuntime:
         loop = asyncio.get_running_loop()
         async with self._client_lock(loop):
             client = self._client
+            client_loop_changed = self._client_loop is not loop
+            self._detach_client(client)
             if client is not None:
-                await client.aclose()
-            if self._client is client:
-                self._client = None
-                self._client_loop = None
-                self._client_stale = False
+                await self._close_client(client, best_effort=client_loop_changed)
 
     def _client_lock(self, loop: asyncio.AbstractEventLoop) -> asyncio.Lock:
         if self._lock is None or self._lock_loop is not loop:
@@ -95,12 +97,29 @@ class LacunaRuntime:
             self._lock_loop = loop
         return self._lock
 
-    async def _close_stale_client(self, stale_client: httpx.AsyncClient) -> None:
-        await stale_client.aclose()
-        if self._client is stale_client:
+    def _detach_client(self, client: httpx.AsyncClient | None) -> None:
+        if self._client is client:
             self._client = None
             self._client_loop = None
             self._client_stale = False
+
+    async def _close_stale_client(
+        self,
+        stale_client: httpx.AsyncClient,
+        *,
+        best_effort: bool,
+    ) -> None:
+        self._detach_client(stale_client)
+        await self._close_client(stale_client, best_effort=best_effort)
+
+    @staticmethod
+    async def _close_client(client: httpx.AsyncClient, *, best_effort: bool) -> None:
+        try:
+            await client.aclose()
+        except Exception:
+            if not best_effort:
+                raise
+            logger.debug("Could not close HTTP client from a previous event loop", exc_info=True)
 
     @staticmethod
     def _headers(config: RuntimeConfig) -> dict[str, str]:
