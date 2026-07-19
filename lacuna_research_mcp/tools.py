@@ -184,8 +184,12 @@ async def search_lacuna(
     combinations raise an error instead of returning zero results.
     date_from and date_to are inclusive publication-date bounds. Accepted
     formats are YYYY, YYYY-MM, and YYYY-MM-DD.
-    fields selects the server-side field projection for hits (e.g. a lean field
-    set); passed straight through to the search API.
+    fields restricts and weights the text fields used for lexical ranking
+    (comma-separated, optional ^weights, e.g. "title^4,abstract"). It does not
+    change the response shape. With the default ranking profile, setting fields
+    selects the experimental lexical ranker and bypasses the default
+    lexical+semantic paper ranker. Leave unset unless you specifically want
+    that.
     debug echoes the requested/normalized type and ranking profile back in
     `_mcp_meta`; off by default to keep responses lean.
     """

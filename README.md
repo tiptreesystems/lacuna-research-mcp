@@ -13,7 +13,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 ## What it exposes
 
 - `search_lacuna`
-  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Paper searches default to semantic ranking. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
+  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Paper searches default to the server's production lexical+semantic ranker. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
 - `get_hypothesis(hypothesis_id_or_url, view="context")`
   Hypothesis/proposal. `view="context"` (default) is a compact single-fetch proposal context (summary, abstract, linked directions); `view="full"` returns the full two-endpoint merge with version history and signal counts.
 - `get_direction(cluster_id_or_url, view="context")`
@@ -31,7 +31,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 
 | MCP tool | Lacuna API endpoint |
 | --- | --- |
-| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` selects a server-side field projection; `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
+| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`; with the default ranking profile it selects the experimental lexical ranker, bypassing the default lexical+semantic paper ranker; `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
 | `get_hypothesis(hypothesis_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/hypothesis/{hypothesis_id}?view=compact`; `view="full"` → `GET /api/v1/hypotheses/{hypothesis_id}` and `GET /api/v1/context/hypothesis/{hypothesis_id}` |
 | `get_direction(cluster_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/direction/{cluster_id}?view=compact`; `view="full"` → `GET /api/v1/clusters/{cluster_id}` |
 | `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
