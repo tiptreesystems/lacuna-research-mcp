@@ -578,3 +578,37 @@ async def test_author_context_forwards_include_neighbors(
     if view == "context":
         expected_params["view"] = "compact"
     assert captured == [expected_params]
+
+
+async def test_institution_authors_forwards_pagination(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert path == "/api/v1/institutions/graph%2Flab/authors"
+        assert params == {"limit": 25, "offset": 50}
+        return {"authors": [], "authors_total": 80}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    payload = await tools.get_institution_authors("graph/lab", limit=25, offset=50)
+
+    assert payload["institution_key"] == "graph/lab"
+
+
+@pytest.mark.parametrize(
+    ("limit", "offset", "message"),
+    (
+        (0, 0, "limit must be between"),
+        (201, 0, "limit must be between"),
+        (50, -1, "offset must be greater than or equal to 0"),
+    ),
+)
+async def test_institution_authors_rejects_invalid_pagination(
+    limit: int,
+    offset: int,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        await tools.get_institution_authors("graph_lab", limit=limit, offset=offset)

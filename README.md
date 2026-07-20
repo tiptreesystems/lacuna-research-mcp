@@ -25,7 +25,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 - Author tools:
   `get_author`, `get_author_context(…, view="context")`, `get_author_impact`, `get_author_neighbors`. `get_author_context` defaults to the compact view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry); `view="full"` returns the complete context and re-enables the `*_limit`/`full` slicing params. Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
 - Venue and institution tools:
-  `get_venue_context(…, view="context")`, `get_institution_context(…, view="context")`. Both default to compact (capped lists, duplicated blocks dropped; venue keeps a recent-activity slice that always includes the requested `year`).
+  `get_venue_context(…, view="context")`, `get_institution_context(…, view="context")`, `get_institution_authors`. Context tools default to compact (capped lists, duplicated blocks dropped; venue keeps a recent-activity slice that always includes the requested `year`). Use `get_institution_authors` to page through an institution's complete author list.
 
 ## Wrapped APIs
 
@@ -42,6 +42,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 | `get_author_neighbors(author_id_or_url)` | `GET /api/v1/authors/{author_id}/neighbors` |
 | `get_venue_context(venue_key_or_url, year, view="context")` | `view="context"` → `GET /api/v1/context/venue/{vkey}[/{year}]?view=compact`; `view="full"` → same route without `view` |
 | `get_institution_context(institution_key_or_url, view="context")` | `view="context"` → `GET /api/v1/context/institution/{ikey}?view=compact`; `view="full"` → same route without `view` |
+| `get_institution_authors(institution_key_or_url, limit=50, offset=0)` | `GET /api/v1/institutions/{ikey}/authors` |
 
 For id-or-URL arguments, pass either the raw id returned by `search_lacuna` or the corresponding Lacuna page URL. The MCP normalizes Lacuna-relative `url` and `*_url` fields to absolute URLs, and it also absolutifies Lacuna links inside fields named `summary_markdown`, `content`, or `description`.
 

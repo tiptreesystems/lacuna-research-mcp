@@ -8,6 +8,7 @@ from lacuna_research_mcp.client import api_object, api_payload, ensure_mcp_meta
 from lacuna_research_mcp.config import (
     DEFAULT_AUTHOR_LIST_LIMIT,
     DIRECTION_PAPERS_MAX_LIMIT,
+    INSTITUTION_AUTHORS_MAX_LIMIT,
     SEARCH_MAX_LIMIT,
 )
 from lacuna_research_mcp.ids import (
@@ -679,13 +680,40 @@ async def get_institution_context(
 
     - "context" (default, recommended): compact institution context — capped top
       authors with the duplicated institution block dropped server-side.
-    - "full": the complete institution context (all authors, duplicated record).
+    - "full": the complete institution context shape (duplicated institution
+      record and a bounded author list with explicit truncation metadata).
+
+    Use get_institution_authors to page through the complete author list.
     """
     normalized_view = _normalize_view(view, _CONTEXT_VIEW_ROUTES)
     params = {"view": "compact"} if normalized_view == "context" else None
     institution_key = extract_route_key(institution_key_or_url, "institution")
     payload = await api_payload(
         f"/api/v1/context/institution/{path_segment(institution_key)}", params=params
+    )
+    payload["institution_key"] = institution_key
+    return payload
+
+
+async def get_institution_authors(
+    institution_key_or_url: str,
+    limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Fetch one page of authors affiliated with a Lacuna institution.
+
+    Results are ordered by paper count. Use authors_total, authors_returned,
+    authors_offset, and authors_truncated to page through the complete list.
+    """
+    if limit < 1 or limit > INSTITUTION_AUTHORS_MAX_LIMIT:
+        raise ValueError(f"limit must be between 1 and {INSTITUTION_AUTHORS_MAX_LIMIT}")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+    institution_key = extract_route_key(institution_key_or_url, "institution")
+    payload = await api_payload(
+        f"/api/v1/institutions/{path_segment(institution_key)}/authors",
+        params={"limit": limit, "offset": offset},
     )
     payload["institution_key"] = institution_key
     return payload
@@ -703,4 +731,5 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_author_neighbors,
     get_venue_context,
     get_institution_context,
+    get_institution_authors,
 )
