@@ -72,8 +72,8 @@ _RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
 _SEARCH_SORTS = frozenset({"relevance", "year_desc", "year_asc"})
 
 # Text fields the server's lexical ranker accepts, mapped to the search types
-# whose documents actually carry that field (see the indexer in
-# lacuna/serving/search_index.py). The server silently drops unknown field
+# whose documents actually carry that field (per the server's search indexer).
+# The server silently drops unknown field
 # names, silently caps weights above 100, and — when a requested field is
 # absent from the target type's documents — returns nothing on that leg and
 # falls back to substring/title matching, ignoring the requested fields. All of
