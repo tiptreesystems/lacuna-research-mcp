@@ -587,8 +587,9 @@ async def get_author_context(
       readable papers and an `impact_directions` list (named research directions)
       in place of the raw numeric `impact_clusters` telemetry, with the duplicated
       nested author record dropped server-side.
-    - "full": the complete author context (raw `impact_clusters`, nested author
-      record). The papers_limit/offset, impact_clusters_limit/offset,
+    - "full": the bounded full-shape author context (raw `impact_clusters`,
+      nested author record; server collections are capped at 100). The
+      papers_limit/offset, impact_clusters_limit/offset,
       levels_limit/offset, and full= params apply only to this view, slicing the
       upstream arrays MCP-side.
 
