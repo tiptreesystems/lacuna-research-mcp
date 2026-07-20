@@ -20,7 +20,7 @@ SERVER_INSTRUCTIONS = (
     "then pass the IDs or URLs it returns to the detail tools to fetch entity "
     "details. All tools are read-only and never mutate state."
     "\n\nDetail tools: get_paper, get_direction and get_direction_papers, "
-    "get_author with its author-context/impact/neighbors variants, "
+    "get_author with its papers/directions/context/impact/neighbors variants, "
     "get_venue_context, get_institution_context and get_institution_authors, "
     "and get_hypothesis."
 )

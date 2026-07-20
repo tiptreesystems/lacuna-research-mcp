@@ -87,7 +87,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     # string) do not reach stderr during normal operation.
     assert fake_mcp.log_level == "WARNING"
     assert tuple(fake_mcp.tools) == tools.TOOL_FUNCTIONS
-    assert len(tools.TOOL_FUNCTIONS) == 12
+    assert len(tools.TOOL_FUNCTIONS) == 14
     # Every read-only GET tool gets the same non-destructive annotation object.
     assert len(fake_mcp.tool_annotations) == len(tools.TOOL_FUNCTIONS)
     assert all(a is fake_mcp.tool_annotations[0] for a in fake_mcp.tool_annotations)

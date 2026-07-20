@@ -580,6 +580,51 @@ async def test_author_context_forwards_include_neighbors(
     assert captured == [expected_params]
 
 
+@pytest.mark.parametrize(
+    ("tool", "route"),
+    (
+        (tools.get_author_papers, "papers"),
+        (tools.get_author_directions, "directions"),
+    ),
+)
+async def test_author_collection_tools_forward_pagination(
+    monkeypatch: pytest.MonkeyPatch,
+    tool,
+    route: str,
+) -> None:
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert path == f"/api/v1/authors/aut_1%2Fextra/{route}"
+        assert params == {"limit": 25, "offset": 50}
+        return {route: [], f"{route}_total": 80}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    payload = await tool("aut_1/extra", limit=25, offset=50)
+
+    assert payload["author_id"] == "aut_1/extra"
+
+
+@pytest.mark.parametrize("tool", (tools.get_author_papers, tools.get_author_directions))
+@pytest.mark.parametrize(
+    ("limit", "offset", "message"),
+    (
+        (0, 0, "limit must be between"),
+        (201, 0, "limit must be between"),
+        (50, -1, "offset must be greater than or equal to 0"),
+    ),
+)
+async def test_author_collection_tools_reject_invalid_pagination(
+    tool,
+    limit: int,
+    offset: int,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        await tool("aut_1", limit=limit, offset=offset)
+
+
 async def test_institution_authors_forwards_pagination(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

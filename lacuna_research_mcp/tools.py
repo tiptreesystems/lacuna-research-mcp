@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from lacuna_research_mcp.client import api_object, api_payload, ensure_mcp_meta
 from lacuna_research_mcp.config import (
+    AUTHOR_COLLECTION_MAX_LIMIT,
     DEFAULT_AUTHOR_LIST_LIMIT,
     DIRECTION_PAPERS_MAX_LIMIT,
     INSTITUTION_AUTHORS_MAX_LIMIT,
@@ -529,6 +530,38 @@ async def get_author(
     return payload
 
 
+async def get_author_papers(
+    author_id_or_url: str,
+    limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Fetch one page of an author's papers, ordered from newest to oldest."""
+    _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
+    author_id = extract_route_key(author_id_or_url, "author")
+    payload = await api_payload(
+        f"/api/v1/authors/{path_segment(author_id)}/papers",
+        params={"limit": limit, "offset": offset},
+    )
+    payload["author_id"] = author_id
+    return payload
+
+
+async def get_author_directions(
+    author_id_or_url: str,
+    limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Fetch one page of an author's named research directions."""
+    _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
+    author_id = extract_route_key(author_id_or_url, "author")
+    payload = await api_payload(
+        f"/api/v1/authors/{path_segment(author_id)}/directions",
+        params={"limit": limit, "offset": offset},
+    )
+    payload["author_id"] = author_id
+    return payload
+
+
 async def get_author_context(
     author_id_or_url: str,
     view: ContextView = "context",
@@ -705,10 +738,7 @@ async def get_institution_authors(
     Results are ordered by paper count. Use authors_total, authors_returned,
     authors_offset, and authors_truncated to page through the complete list.
     """
-    if limit < 1 or limit > INSTITUTION_AUTHORS_MAX_LIMIT:
-        raise ValueError(f"limit must be between 1 and {INSTITUTION_AUTHORS_MAX_LIMIT}")
-    if offset < 0:
-        raise ValueError("offset must be greater than or equal to 0")
+    _validate_collection_page(limit=limit, offset=offset, max_limit=INSTITUTION_AUTHORS_MAX_LIMIT)
 
     institution_key = extract_route_key(institution_key_or_url, "institution")
     payload = await api_payload(
@@ -719,6 +749,13 @@ async def get_institution_authors(
     return payload
 
 
+def _validate_collection_page(*, limit: int, offset: int, max_limit: int) -> None:
+    if limit < 1 or limit > max_limit:
+        raise ValueError(f"limit must be between 1 and {max_limit}")
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+
+
 TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     search_lacuna,
     get_hypothesis,
@@ -726,6 +763,8 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_direction_papers,
     get_paper,
     get_author,
+    get_author_papers,
+    get_author_directions,
     get_author_context,
     get_author_impact,
     get_author_neighbors,
