@@ -135,6 +135,8 @@ async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> No
     app = server.create_mcp()
 
     assert app.instructions == server.SERVER_INSTRUCTIONS
+    initialization_options = app._mcp_server.create_initialization_options()
+    assert initialization_options.server_version == config.PACKAGE_VERSION
 
     listed = await app.list_tools()
     assert len(listed) == len(tools.TOOL_FUNCTIONS)

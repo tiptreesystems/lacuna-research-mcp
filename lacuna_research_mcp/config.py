@@ -33,7 +33,8 @@ def _package_version() -> str:
         return "unknown"
 
 
-DEFAULT_USER_AGENT = f"{PACKAGE_NAME}/{_package_version()}"
+PACKAGE_VERSION = _package_version()
+DEFAULT_USER_AGENT = f"{PACKAGE_NAME}/{PACKAGE_VERSION}"
 
 
 @dataclass(frozen=True)

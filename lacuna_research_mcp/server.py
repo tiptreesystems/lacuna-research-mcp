@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from lacuna_research_mcp.client import close_http_client, configure_runtime_from_env
-from lacuna_research_mcp.config import log_level_from_env
+from lacuna_research_mcp.config import PACKAGE_VERSION, log_level_from_env
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS
 
 # Kept so the self-contained scope/workflow summary lands within the first 512
@@ -48,6 +48,15 @@ def _read_only_tool_annotations() -> Any:
     )
 
 
+def _set_server_version(app: Any) -> None:
+    # FastMCP 1.x does not expose an application-version constructor argument.
+    # Its low-level server otherwise falls back to the MCP SDK package version
+    # in the initialize handshake.
+    low_level_server = getattr(app, "_mcp_server", None)
+    if low_level_server is not None:
+        low_level_server.version = PACKAGE_VERSION
+
+
 @asynccontextmanager
 async def _lifespan(_server: Any) -> AsyncIterator[None]:
     try:
@@ -66,6 +75,7 @@ def create_mcp() -> Any:
         lifespan=_lifespan,
         log_level=log_level,
     )
+    _set_server_version(app)
     annotations = _read_only_tool_annotations()
     for tool_func in TOOL_FUNCTIONS:
         app.tool(annotations=annotations)(tool_func)
