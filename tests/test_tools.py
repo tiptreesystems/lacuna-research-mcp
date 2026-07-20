@@ -101,6 +101,101 @@ async def test_search_rejects_semantic_year_sort_before_api_call(
         )
 
 
+def test_search_fields_normalization_and_invalid_values() -> None:
+    assert tools._normalize_fields(None, "paper") is None
+    assert tools._normalize_fields("", "paper") is None
+    assert tools._normalize_fields("   ", "paper") is None
+    assert tools._normalize_fields("title,abstract", "paper") == "title,abstract"
+    assert tools._normalize_fields(" Title^4 , Abstract ", "paper") == "title^4,abstract"
+    assert tools._normalize_fields("summary,concepts,venue", "paper") == "summary,concepts,venue"
+    assert tools._normalize_fields("title^100", "paper") == "title^100"
+    # search_type "all" spans every type, so all fields are accepted.
+    assert tools._normalize_fields("name,top_names,venue", "all") == "name,top_names,venue"
+
+    with pytest.raises(ValueError, match="unknown search field"):
+        tools._normalize_fields("titel^2", "paper")
+    with pytest.raises(ValueError, match="weight must be a finite positive number"):
+        tools._normalize_fields("title^0", "paper")
+    with pytest.raises(ValueError, match="weight must be a finite positive number"):
+        tools._normalize_fields("title^-3", "paper")
+    with pytest.raises(ValueError, match="weight must be a finite positive number"):
+        tools._normalize_fields("title^abc", "paper")
+    with pytest.raises(ValueError, match="weight must be a finite positive number"):
+        tools._normalize_fields("title^inf", "paper")
+    with pytest.raises(ValueError, match="weight must be <= 100"):
+        tools._normalize_fields("title^101", "paper")
+
+
+def test_search_fields_reject_type_incompatible_field() -> None:
+    # 'name' exists only on author/institution/venue documents, not papers.
+    with pytest.raises(ValueError, match="does not exist on search_type 'paper'"):
+        tools._normalize_fields("name", "paper")
+    # 'abstract' exists only on papers, not authors.
+    with pytest.raises(ValueError, match="does not exist on search_type 'author'"):
+        tools._normalize_fields("name,abstract", "author")
+    # A mixed list is rejected on the first incompatible field.
+    with pytest.raises(ValueError, match="does not exist on search_type 'paper'"):
+        tools._normalize_fields("title,name", "paper")
+
+    assert tools._normalize_fields("name", "author") == "name"
+    assert tools._normalize_fields("top_names", "cluster") == "top_names"
+    assert tools._normalize_fields("title^2,venue", "venue") == "title^2,venue"
+
+
+async def test_search_rejects_semantic_fields_before_api_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raise AssertionError("api_payload should not be called")
+
+    monkeypatch.setattr(tools, "api_payload", fail_api_payload)
+
+    with pytest.raises(ValueError, match="not supported with ranking_profile 'semantic'"):
+        await tools.search_lacuna(
+            "graph retrieval",
+            search_type="paper",
+            ranking_profile="semantic",
+            fields="title^4,abstract",
+        )
+
+
+async def test_search_rejects_invalid_fields_before_api_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raise AssertionError("api_payload should not be called")
+
+    monkeypatch.setattr(tools, "api_payload", fail_api_payload)
+
+    with pytest.raises(ValueError, match="unknown search field"):
+        await tools.search_lacuna("graph retrieval", search_type="paper", fields="titel^2")
+
+    # 'name' is absent from paper documents; rejected via the normalized type.
+    with pytest.raises(ValueError, match="does not exist on search_type 'paper'"):
+        await tools.search_lacuna("graph retrieval", search_type="papers", fields="name")
+
+
+async def test_search_passes_normalized_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured_params: dict[str, Any] = {}
+
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert params is not None
+        captured_params.update(params)
+        return {}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    await tools.search_lacuna("graph retrieval", search_type="paper", fields=" Title^4 , Abstract ")
+
+    assert captured_params["fields"] == "title^4,abstract"
+
+
 async def test_search_passes_year_sort_with_default_profile(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from typing import Any, Literal
 
@@ -70,6 +71,26 @@ _RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
 
 _SEARCH_SORTS = frozenset({"relevance", "year_desc", "year_asc"})
 
+# Text fields the server's lexical ranker accepts, mapped to the search types
+# whose documents actually carry that field (see the indexer in
+# lacuna/serving/search_index.py). The server silently drops unknown field
+# names, silently caps weights above 100, and — when a requested field is
+# absent from the target type's documents — returns nothing on that leg and
+# falls back to substring/title matching, ignoring the requested fields. All of
+# these are validated here instead so the caller gets an error rather than a
+# silently degraded ranking.
+_SEARCH_FIELD_TYPES: dict[str, frozenset[str]] = {
+    "title": frozenset({"paper", "cluster", "venue", "hypothesis"}),
+    "abstract": frozenset({"paper"}),
+    "summary": frozenset({"paper"}),
+    "concepts": frozenset({"paper"}),
+    "name": frozenset({"author", "institution", "venue"}),
+    "top_names": frozenset({"cluster", "hypothesis"}),
+    "venue": frozenset({"paper", "venue"}),
+}
+_SEARCH_FIELDS = frozenset(_SEARCH_FIELD_TYPES)
+_SEARCH_FIELD_MAX_WEIGHT = 100.0
+
 
 def _normalize_search_type(search_type: str | None) -> str:
     value = "" if search_type is None else str(search_type).strip().lower()
@@ -110,6 +131,61 @@ def _normalize_sort(sort: str | None) -> str:
         return value
     valid_values = ", ".join(sorted(_SEARCH_SORTS))
     raise ValueError(f"Invalid sort {sort!r}. Valid values: {valid_values}")
+
+
+def _normalize_fields(fields: str | None, search_type: str) -> str | None:
+    value = "" if fields is None else str(fields).strip()
+    if not value:
+        return None
+    parts: list[str] = []
+    for raw_part in value.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        field, sep, weight_raw = part.rpartition("^")
+        if not sep:
+            field, weight_raw = weight_raw, ""
+        field = field.strip().lower()
+        supported_types = _SEARCH_FIELD_TYPES.get(field)
+        if supported_types is None:
+            valid_values = ", ".join(sorted(_SEARCH_FIELDS))
+            raise ValueError(
+                f"Invalid fields entry {part!r}: unknown search field "
+                f"{field or part!r}; the server would silently drop it. "
+                f"Valid fields: {valid_values}"
+            )
+        # search_type "all" spans every document type, so any field applies.
+        if search_type != "all" and search_type not in supported_types:
+            supported = ", ".join(sorted(supported_types))
+            raise ValueError(
+                f"Invalid fields entry {part!r}: field {field!r} does not exist "
+                f"on search_type {search_type!r} documents; the server would "
+                "match nothing on that field and silently fall back to "
+                f"substring/title ranking. Field {field!r} applies to: {supported}."
+            )
+        if not sep:
+            parts.append(field)
+            continue
+        weight_raw = weight_raw.strip()
+        try:
+            weight = float(weight_raw)
+        except ValueError:
+            weight = math.nan
+        if not math.isfinite(weight) or weight <= 0:
+            raise ValueError(
+                f"Invalid fields entry {part!r}: weight must be a finite "
+                "positive number; the server would silently fall back to a "
+                "default weight."
+            )
+        if weight > _SEARCH_FIELD_MAX_WEIGHT:
+            raise ValueError(
+                f"Invalid fields entry {part!r}: weight must be <= "
+                f"{_SEARCH_FIELD_MAX_WEIGHT:g}; the server would silently cap it."
+            )
+        parts.append(f"{field}^{weight_raw}")
+    if not parts:
+        raise ValueError(f"Invalid fields {fields!r}: no field names found.")
+    return ",".join(parts)
 
 
 _PAPER_VIEW_ROUTES: dict[str, str] = {
@@ -179,9 +255,9 @@ async def search_lacuna(
 
     The corpus covers machine learning and AI research: papers, research
     directions, authors' research output, venues, institutions, and generated
-    hypotheses. It does not contain affiliations, biographies, news, or
-    non-research web content; answer questions outside that scope from other
-    sources rather than guessing from these results.
+    hypotheses. It does not contain biographies, news, or non-research web
+    content; answer questions outside that scope from other sources rather than
+    guessing from these results.
 
     ranking_profile controls server-side ranking:
     - default / lexical (default): use the server's default ranker. With
@@ -209,15 +285,34 @@ async def search_lacuna(
     formats are YYYY, YYYY-MM, and YYYY-MM-DD.
     fields restricts and weights the text fields used for lexical ranking
     (comma-separated, optional ^weights, e.g. "title^4,abstract"). It does not
-    change the response shape. Setting fields selects the experimental lexical
-    ranker; for a default relevance-sorted paper search, it also bypasses the
-    lexical+semantic ranker. Leave unset unless you specifically want that.
+    change the response shape. Valid field names are title, abstract, summary,
+    concepts, name, top_names, and venue; each field only exists on some
+    document types, so a field must be compatible with search_type: title on
+    paper/cluster/venue/hypothesis; abstract, summary, concepts on paper; name
+    on author/institution/venue; top_names on cluster/hypothesis; venue on
+    paper/venue (search_type="all" spans every type). Weights must be finite
+    numbers with 0 < weight <= 100. Unknown names, malformed or out-of-range
+    weights, and fields absent from the requested type are rejected locally
+    because the server would otherwise silently drop, cap, or ignore them.
+    fields cannot be combined with ranking_profile="semantic" (the server
+    would return embedding-based results and silently ignore fields). Setting
+    fields selects the experimental lexical ranker; for a default
+    relevance-sorted paper search, it also bypasses the lexical+semantic
+    ranker. Leave unset unless you specifically want that.
     debug echoes the requested/normalized type and ranking profile back in
     `_mcp_meta`; off by default to keep responses lean.
     """
     normalized_type = _normalize_search_type(search_type)
     normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, normalized_type)
     normalized_sort = _normalize_sort(sort)
+    normalized_fields = _normalize_fields(fields, normalized_type)
+    if normalized_ranking_profile == "semantic" and normalized_fields is not None:
+        raise ValueError(
+            f"fields {fields!r} is not supported with ranking_profile "
+            "'semantic'; the server would return embedding-based results and "
+            "silently ignore fields. Use the default or bm25_title_abstract "
+            "profile to control lexical fields."
+        )
     if normalized_ranking_profile == "semantic" and normalized_sort != "relevance":
         raise ValueError(
             f"sort {sort!r} is not supported with ranking_profile 'semantic'; "
@@ -239,8 +334,8 @@ async def search_lacuna(
         params["date_to"] = date_to
     if venue:
         params["venue"] = venue
-    if fields:
-        params["fields"] = fields
+    if normalized_fields is not None:
+        params["fields"] = normalized_fields
 
     payload = await api_payload("/api/v1/search", params=params)
     if debug:
@@ -411,9 +506,10 @@ async def get_author(
 ) -> dict[str, Any]:
     """Fetch a Lacuna author by author id or author URL.
 
-    Author profiles describe research output only (papers, directions, impact).
-    Affiliations, employment, and biography are out of scope of the corpus; do
-    not infer or guess them from this data.
+    Author profiles describe research output (papers, directions, impact). A
+    free-text `affiliation` field may be present but can be incomplete or
+    outdated and may not represent current employment; the corpus has no
+    biography or employment history, so do not infer those from this data.
 
     Large paper lists are sliced by default for MCP usability. Set full=True to
     return upstream arrays unsliced.
@@ -445,9 +541,10 @@ async def get_author_context(
 ) -> dict[str, Any]:
     """Fetch agent-oriented context for a Lacuna author.
 
-    Author profiles describe research output only (papers, directions, impact).
-    Affiliations, employment, and biography are out of scope of the corpus; do
-    not infer or guess them from this data.
+    Author profiles describe research output (papers, directions, impact). A
+    free-text `affiliation` field may be present but can be incomplete or
+    outdated and may not represent current employment; the corpus has no
+    biography or employment history, so do not infer those from this data.
 
     view selects the response shape:
 

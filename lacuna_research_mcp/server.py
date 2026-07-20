@@ -5,7 +5,24 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from lacuna_research_mcp.client import close_http_client, configure_runtime_from_env
+from lacuna_research_mcp.config import log_level_from_env
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS
+
+# Kept so the self-contained scope/workflow summary lands within the first 512
+# characters that some MCP clients (e.g. Codex) surface; the tool enumeration
+# follows after that boundary.
+SERVER_INSTRUCTIONS = (
+    "Lacuna is a read-only knowledge graph of machine learning and AI research: "
+    "papers, research directions (clusters), authors, venues, institutions, and "
+    "generated hypotheses. It does not cover biographies, news, or non-research "
+    "web content; answer questions outside that scope from other sources rather "
+    "than guessing. Workflow: if you have no ID or URL, call search_lacuna first, "
+    "then pass the IDs or URLs it returns to the detail tools to fetch entity "
+    "details. All tools are read-only and never mutate state."
+    "\n\nDetail tools: get_paper, get_direction and get_direction_papers, "
+    "get_author with its author-context/impact/neighbors variants, "
+    "get_venue_context, get_institution_context, and get_hypothesis."
+)
 
 
 def _load_fast_mcp() -> Any:
@@ -13,6 +30,22 @@ def _load_fast_mcp() -> Any:
     from mcp.server.fastmcp import FastMCP
 
     return FastMCP
+
+
+def _read_only_tool_annotations() -> Any:
+    # Deferred import mirrors _load_fast_mcp so a missing mcp dependency still
+    # surfaces as a clear CLI error rather than an import failure at module load.
+    from mcp.types import ToolAnnotations
+
+    # All tools issue GET requests against the Lacuna API: read-only,
+    # non-destructive, idempotent, and querying an external corpus (open world).
+    # These are advisory hints for MCP clients, not security enforcement.
+    return ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    )
 
 
 @asynccontextmanager
@@ -25,10 +58,17 @@ async def _lifespan(_server: Any) -> AsyncIterator[None]:
 
 def create_mcp() -> Any:
     configure_runtime_from_env()
+    log_level = log_level_from_env()
     fast_mcp = _load_fast_mcp()
-    app = fast_mcp("lacuna-research-search", lifespan=_lifespan)
+    app = fast_mcp(
+        "lacuna-research-search",
+        instructions=SERVER_INSTRUCTIONS,
+        lifespan=_lifespan,
+        log_level=log_level,
+    )
+    annotations = _read_only_tool_annotations()
     for tool_func in TOOL_FUNCTIONS:
-        app.tool()(tool_func)
+        app.tool(annotations=annotations)(tool_func)
     return app
 
 

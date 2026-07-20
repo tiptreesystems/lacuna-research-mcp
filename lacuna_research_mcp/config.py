@@ -19,6 +19,11 @@ RETRY_AFTER_MAX_SECONDS = 30.0
 RETRY_STATUS_CODES = frozenset({429, 502, 503, 504})
 SLOW_RESPONSE_SECONDS = 10.0
 MAX_NORMALIZE_DEPTH = 64
+# Default WARNING so normal operation does not emit httpx's INFO request logs,
+# which include full request URLs with the user's query string to stderr that
+# MCP hosts may retain. Raise via LACUNA_MCP_LOG_LEVEL for debugging.
+DEFAULT_LOG_LEVEL = "WARNING"
+LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 
 def _package_version() -> str:
@@ -79,6 +84,19 @@ def _parse_site_url(value: str | None) -> str:
             f"Invalid LACUNA_SITE_URL: must not contain a query string or fragment, got {value!r}"
         )
     return raw
+
+
+def _parse_log_level(value: str | None) -> str:
+    if value is None:
+        return DEFAULT_LOG_LEVEL
+    level = value.strip().upper()
+    if level not in LOG_LEVELS:
+        raise ValueError(f"Invalid LACUNA_MCP_LOG_LEVEL: must be one of {', '.join(LOG_LEVELS)}")
+    return level
+
+
+def log_level_from_env() -> str:
+    return _parse_log_level(os.environ.get("LACUNA_MCP_LOG_LEVEL"))
 
 
 def runtime_config_from_env() -> RuntimeConfig:

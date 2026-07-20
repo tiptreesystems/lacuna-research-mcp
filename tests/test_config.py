@@ -43,6 +43,16 @@ def test_max_retries_env_parsing_is_explicit() -> None:
         config._parse_max_retries("-1")
 
 
+def test_log_level_env_parsing_is_explicit() -> None:
+    assert config._parse_log_level(None) == config.DEFAULT_LOG_LEVEL
+    assert config.DEFAULT_LOG_LEVEL == "WARNING"
+    assert config._parse_log_level("info") == "INFO"
+    assert config._parse_log_level(" debug ") == "DEBUG"
+
+    with pytest.raises(ValueError, match="must be one of"):
+        config._parse_log_level("verbose")
+
+
 def test_bad_timeout_does_not_fail_import() -> None:
     env = os.environ.copy()
     env["LACUNA_MCP_TIMEOUT"] = "not-a-number"

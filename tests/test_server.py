@@ -43,14 +43,25 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FakeMCP:
-        def __init__(self, name: str, *, lifespan: Any = None) -> None:
+        def __init__(
+            self,
+            name: str,
+            *,
+            instructions: str | None = None,
+            lifespan: Any = None,
+            log_level: str | None = None,
+        ) -> None:
             self.name = name
+            self.instructions = instructions
             self.lifespan = lifespan
+            self.log_level = log_level
             self.tools: list[Any] = []
+            self.tool_annotations: list[Any] = []
 
-        def tool(self) -> Any:
+        def tool(self, *, annotations: Any = None) -> Any:
             def register(func: Any) -> Any:
                 self.tools.append(func)
+                self.tool_annotations.append(annotations)
                 return func
 
             return register
@@ -60,6 +71,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     client.RUNTIME._client = sentinel_client
     client.RUNTIME._client_loop = sentinel_loop
     monkeypatch.setattr(server, "_load_fast_mcp", lambda: FakeMCP)
+    monkeypatch.delenv("LACUNA_MCP_LOG_LEVEL", raising=False)
     monkeypatch.setenv("LACUNA_SITE_URL", "https://lacuna.example/")
     monkeypatch.setenv("LACUNA_MCP_TIMEOUT", "3.5")
     monkeypatch.setenv("LACUNA_MCP_MAX_RETRIES", "4")
@@ -69,9 +81,16 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     fake_mcp = server.create_mcp()
 
     assert fake_mcp.name == "lacuna-research-search"
+    assert fake_mcp.instructions is server.SERVER_INSTRUCTIONS
     assert fake_mcp.lifespan is server._lifespan
+    # Default to WARNING so httpx's INFO request-URL logs (with the query
+    # string) do not reach stderr during normal operation.
+    assert fake_mcp.log_level == "WARNING"
     assert tuple(fake_mcp.tools) == tools.TOOL_FUNCTIONS
     assert len(tools.TOOL_FUNCTIONS) == 11
+    # Every read-only GET tool gets the same non-destructive annotation object.
+    assert len(fake_mcp.tool_annotations) == len(tools.TOOL_FUNCTIONS)
+    assert all(a is fake_mcp.tool_annotations[0] for a in fake_mcp.tool_annotations)
     assert (
         config.RuntimeConfig(
             site_url="https://lacuna.example",
@@ -87,6 +106,43 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     assert client.RUNTIME._client is sentinel_client
     assert client.RUNTIME._client_loop is sentinel_loop
     assert client.RUNTIME._client_stale is True
+
+
+def test_create_mcp_log_level_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeMCP:
+        def __init__(
+            self,
+            name: str,
+            *,
+            instructions: str | None = None,
+            lifespan: Any = None,
+            log_level: str | None = None,
+        ) -> None:
+            self.log_level = log_level
+
+        def tool(self, *, annotations: Any = None) -> Any:
+            return lambda func: func
+
+    monkeypatch.setattr(server, "_load_fast_mcp", lambda: FakeMCP)
+    monkeypatch.setenv("LACUNA_MCP_LOG_LEVEL", "debug")
+
+    assert server.create_mcp().log_level == "DEBUG"
+
+
+async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> None:
+    # Build the real FastMCP app (no fake) to verify the discovery/safety
+    # metadata reaches the wire format MCP clients actually read.
+    app = server.create_mcp()
+
+    assert app.instructions == server.SERVER_INSTRUCTIONS
+
+    listed = await app.list_tools()
+    assert len(listed) == len(tools.TOOL_FUNCTIONS)
+    for tool in listed:
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.destructiveHint is False
+        assert tool.annotations.idempotentHint is True
 
 
 async def test_lifespan_closes_http_client() -> None:

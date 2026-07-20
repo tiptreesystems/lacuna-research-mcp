@@ -8,7 +8,7 @@ The server is standalone: it talks to the public Lacuna deployment at `https://l
 
 ## Scope
 
-The corpus covers machine learning and AI research: papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain affiliations, biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
+The corpus covers machine learning and AI research: papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
 
 ## What it exposes
 
@@ -31,7 +31,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 
 | MCP tool | Lacuna API endpoint |
 | --- | --- |
-| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker; `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
+| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker. Allowed fields are `title`, `abstract`, `summary`, `concepts`, `name`, `top_names`, `venue`, each valid only for the types that carry it — `title`: paper/cluster/venue/hypothesis; `abstract`/`summary`/`concepts`: paper; `name`: author/institution/venue; `top_names`: cluster/hypothesis; `venue`: paper/venue (`search_type="all"` spans all). Weights must satisfy `0 < weight <= 100`. Unknown fields, out-of-range weights, type-incompatible fields, and `fields` combined with `ranking_profile="semantic"` are rejected, since the server would otherwise silently drop, cap, or ignore them. `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
 | `get_hypothesis(hypothesis_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/hypothesis/{hypothesis_id}?view=compact`; `view="full"` → `GET /api/v1/hypotheses/{hypothesis_id}` and `GET /api/v1/context/hypothesis/{hypothesis_id}` |
 | `get_direction(cluster_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/direction/{cluster_id}?view=compact`; `view="full"` → `GET /api/v1/clusters/{cluster_id}` |
 | `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
@@ -129,6 +129,8 @@ uv run lacuna-research-mcp
   Defaults to `lacuna-research-mcp/{package_version}`
 - `LACUNA_MCP_BEARER_TOKEN`
   Optional bearer token sent as `Authorization: Bearer ...` for private Lacuna deployments.
+- `LACUNA_MCP_LOG_LEVEL`
+  Defaults to `WARNING` (one of `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). The default keeps normal operation quiet; lower it only for debugging, since `INFO`/`DEBUG` let the HTTP client log full request URLs — including the search query string — to stderr, which some MCP hosts retain.
 
 Environment variables are read once when the MCP server is created, or on the first direct tool/API call if the module is imported without calling `create_mcp()`.
 
