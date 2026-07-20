@@ -512,6 +512,7 @@ async def test_author_context_truncates_nested_author_payload(
         path: str, *, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         assert path == "/api/v1/context/author/aut_1"
+        assert params == {"include_neighbors": False}
         return {
             "author": {
                 "papers": list(range(3)),
@@ -546,10 +547,34 @@ async def test_author_context_compact_skips_local_truncation(
 
     payload = await tools.get_author_context("aut_1", papers_limit=1)
 
-    assert captured == [{"view": "compact"}]
+    assert captured == [{"include_neighbors": False, "view": "compact"}]
     # MCP-side truncation is skipped in compact mode, so papers are untouched and
     # the verbose truncation metadata is not added.
     assert payload["papers"] == [0, 1, 2]
     assert "papers_total" not in payload
     assert "truncated" not in payload
     assert payload["author_id"] == "aut_1"
+
+
+@pytest.mark.parametrize("view", ("context", "full"))
+async def test_author_context_forwards_include_neighbors(
+    monkeypatch: pytest.MonkeyPatch,
+    view: str,
+) -> None:
+    captured: list[dict[str, Any] | None] = []
+
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert path == "/api/v1/context/author/aut_1"
+        captured.append(params)
+        return {}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    await tools.get_author_context("aut_1", view=view, include_neighbors=True)
+
+    expected_params: dict[str, Any] = {"include_neighbors": True}
+    if view == "context":
+        expected_params["view"] = "compact"
+    assert captured == [expected_params]

@@ -23,7 +23,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 - `get_paper(artifact_id_or_url, view="context", figure_limit=None)`
   Paper lookup. `view="context"` (default) requests the compact agent-oriented context; other views are `"full"`, `"preview"`, `"blog"`, `"figures"`, `"concepts"`, or `"neighbors"`. In context view, `figure_limit` caps the figure preview (server default 3; pass 0 to suppress previews while keeping a `figures_truncated` signal).
 - Author tools:
-  `get_author`, `get_author_context(…, view="context")`, `get_author_impact`, `get_author_neighbors`. `get_author_context` defaults to the compact view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry); `view="full"` returns the complete context and re-enables the `*_limit`/`full` slicing params.
+  `get_author`, `get_author_context(…, view="context")`, `get_author_impact`, `get_author_neighbors`. `get_author_context` defaults to the compact view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry); `view="full"` returns the complete context and re-enables the `*_limit`/`full` slicing params. Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
 - Venue and institution tools:
   `get_venue_context(…, view="context")`, `get_institution_context(…, view="context")`. Both default to compact (capped lists, duplicated blocks dropped; venue keeps a recent-activity slice that always includes the requested `year`).
 
@@ -37,7 +37,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 | `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
 | `get_paper(artifact_id_or_url, view="context", figure_limit=None)` | `view="context"` → `GET /api/v1/context/paper/{artifact_id}?view=compact` (`&figure_limit=N` when set); `view="full"` → `GET /api/v1/papers/{artifact_id}`; `view="preview"` → `…/preview`; `view="blog"` → `…/blog`; `view="figures"` → `…/figures`; `view="concepts"` → `…/concepts`; `view="neighbors"` → `…/neighbors` |
 | `get_author(author_id_or_url, papers_limit, papers_offset, levels_limit, levels_offset, full)` | `GET /api/v1/authors/{author_id}` |
-| `get_author_context(author_id_or_url, view="context", papers_limit, papers_offset, impact_clusters_limit, impact_clusters_offset, levels_limit, levels_offset, full)` | `view="context"` → `GET /api/v1/context/author/{author_id}?view=compact`; `view="full"` → `GET /api/v1/context/author/{author_id}` (slicing params apply only to `view="full"`) |
+| `get_author_context(author_id_or_url, view="context", papers_limit, papers_offset, impact_clusters_limit, impact_clusters_offset, levels_limit, levels_offset, full, include_neighbors=false)` | `view="context"` → `GET /api/v1/context/author/{author_id}?view=compact`; `view="full"` → `GET /api/v1/context/author/{author_id}` (slicing params apply only to `view="full"`; `include_neighbors=true` explicitly requests similar authors) |
 | `get_author_impact(author_id_or_url, impact_clusters_limit, impact_clusters_offset, full)` | `GET /api/v1/authors/{author_id}/impact` |
 | `get_author_neighbors(author_id_or_url)` | `GET /api/v1/authors/{author_id}/neighbors` |
 | `get_venue_context(venue_key_or_url, year, view="context")` | `view="context"` → `GET /api/v1/context/venue/{vkey}[/{year}]?view=compact`; `view="full"` → same route without `view` |

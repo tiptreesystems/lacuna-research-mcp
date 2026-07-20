@@ -538,6 +538,7 @@ async def get_author_context(
     levels_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     levels_offset: int = 0,
     full: bool = False,
+    include_neighbors: bool = False,
 ) -> dict[str, Any]:
     """Fetch agent-oriented context for a Lacuna author.
 
@@ -556,17 +557,25 @@ async def get_author_context(
       record). The papers_limit/offset, impact_clusters_limit/offset,
       levels_limit/offset, and full= params apply only to this view, slicing the
       upstream arrays MCP-side.
+
+    Set include_neighbors=True to include similar authors as named, linkable
+    records. Neighbor computation may add significant server latency.
     """
     normalized_view = _normalize_view(view, _CONTEXT_VIEW_ROUTES)
     author_id = extract_route_key(author_id_or_url, "author")
+    params: dict[str, Any] = {"include_neighbors": include_neighbors}
     if normalized_view == "context":
+        params["view"] = "compact"
         payload = await api_payload(
             f"/api/v1/context/author/{path_segment(author_id)}",
-            params={"view": "compact"},
+            params=params,
         )
         payload["author_id"] = author_id
         return payload
-    payload = await api_payload(f"/api/v1/context/author/{path_segment(author_id)}")
+    payload = await api_payload(
+        f"/api/v1/context/author/{path_segment(author_id)}",
+        params=params,
+    )
     truncate_author_payload_in_place(
         payload,
         papers_limit=papers_limit,
