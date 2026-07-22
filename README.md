@@ -2,6 +2,12 @@
 
 ### 🔬 Empower your coding agent for machine learning research
 
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.11+" /></a>
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-server-7C3AED" alt="MCP server" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" /></a>
+</p>
+
 Lacuna Research MCP gives AI researchers' coding agents:
 
 - **Novel research proposals.** Explore novel research ideas generated with [Alien Science](https://openreview.net/pdf?id=XZWkDET1ia).
