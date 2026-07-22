@@ -72,7 +72,95 @@ All searches use the server default unless `ranking_profile` is provided. The MC
 
 ## Install
 
-### With uv
+The easiest setup uses [`uvx`](https://docs.astral.sh/uv/guides/tools/) to run the server directly from GitHub. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first; Lacuna Research MCP requires Python 3.11 or newer.
+
+### Codex
+
+Add the server with the Codex CLI:
+
+```bash
+codex mcp add lacuna-research -- uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
+```
+
+Alternatively, add the following to `~/.codex/config.toml` (or to `.codex/config.toml` in a trusted project for project-only setup):
+
+```toml
+[mcp_servers.lacuna-research]
+command = "uvx"
+args = ["--from", "git+https://github.com/tiptreesystems/lacuna-research-mcp.git", "lacuna-research-mcp"]
+```
+
+Run `codex mcp list` to verify the server is configured. The Codex app, CLI, and IDE extension share this configuration on the same machine.
+
+### Claude Code
+
+Add the server for all of your projects with the Claude Code CLI:
+
+```bash
+claude mcp add --scope user lacuna-research -- uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
+```
+
+Omit `--scope user` to add it only to the current project. Alternatively, add the following under the top-level `mcpServers` object in `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "lacuna-research": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
+        "lacuna-research-mcp"
+      ]
+    }
+  }
+}
+```
+
+Run `claude mcp get lacuna-research` to verify the server is configured.
+
+### Claude Desktop
+
+Open **Settings → Developer → Edit Config**, then add the server under `mcpServers` in `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "lacuna-research": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
+        "lacuna-research-mcp"
+      ]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving the file.
+
+### Other MCP clients
+
+For any client that supports local stdio MCP servers, use this standard configuration:
+
+```json
+{
+  "mcpServers": {
+    "lacuna-research": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
+        "lacuna-research-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Standalone command
 
 Install the MCP server as a persistent command:
 
@@ -87,7 +175,9 @@ Run it without installing a persistent command:
 uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
 ```
 
-For local development from a checkout:
+### Local development
+
+With uv:
 
 ```bash
 git clone https://github.com/tiptreesystems/lacuna-research-mcp.git
@@ -96,7 +186,7 @@ uv sync --extra dev
 uv run lacuna-research-mcp
 ```
 
-### With pip
+With pip:
 
 ```bash
 cd <path-to-lacuna-research-mcp>
@@ -104,20 +194,6 @@ python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -e .
-```
-
-## Run
-
-After `uv tool install`, run:
-
-```bash
-lacuna-research-mcp
-```
-
-From a local checkout, run:
-
-```bash
-uv run lacuna-research-mcp
 ```
 
 ## Environment variables
@@ -157,56 +233,6 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
   Local slicing and metadata for large author-related arrays returned by upstream APIs.
 - `lacuna_research_mcp/errors.py`
   User-facing exception type for Lacuna API access failures.
-
-## Codex config snippet
-
-Add this to your Codex MCP config wherever you keep MCP servers:
-
-```toml
-[mcp_servers.lacuna_research]
-command = "uvx"
-args = ["--from", "git+https://github.com/tiptreesystems/lacuna-research-mcp.git", "lacuna-research-mcp"]
-
-[mcp_servers.lacuna_research.env]
-LACUNA_SITE_URL = "https://lacuna.tiptreesystems.com"
-```
-
-## Claude Code
-
-One command:
-
-```bash
-claude mcp add lacuna-research -- uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
-```
-
-Or add this under the top-level `mcpServers` object in `~/.claude.json`:
-
-```json
-"lacuna-research": {
-  "type": "stdio",
-  "command": "uvx",
-  "args": [
-    "--from",
-    "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
-    "lacuna-research-mcp"
-  ]
-}
-```
-
-## Claude Desktop
-
-Add this under `mcpServers` in `claude_desktop_config.json` (Settings → Developer → Edit Config):
-
-```json
-"lacuna-research": {
-  "command": "uvx",
-  "args": [
-    "--from",
-    "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
-    "lacuna-research-mcp"
-  ]
-}
-```
 
 ## First use
 
