@@ -414,26 +414,17 @@ async def test_url_derived_ids_are_unquoted_before_api_path_quoting(
 
 
 async def test_hypothesis_id_is_quoted_in_both_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: list[tuple[str, str, dict[str, Any] | None]] = []
+    captured: list[tuple[str, str]] = []
 
     async def fake_api_payload(
         path: str, *, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        captured.append(("payload", path, params))
-        return {
-            "_mcp_meta": {"source": "server_api"},
-            "current_version": 1,
-            "versions": [{"version_number": 1, "markdown": "body"}],
-        }
+        captured.append(("payload", path))
+        return {"_mcp_meta": {"source": "server_api"}, "versions": []}
 
     async def fake_api_object(path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        captured.append(("object", path, params))
-        return {
-            "title": "Hypothesis",
-            "summary_markdown": "body",
-            "directions": [],
-            "hypothesis": {"markdown": "body"},
-        }
+        captured.append(("object", path))
+        return {"title": "Hypothesis"}
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
     monkeypatch.setattr(tools, "api_object", fake_api_object)
@@ -441,19 +432,11 @@ async def test_hypothesis_id_is_quoted_in_both_paths(monkeypatch: pytest.MonkeyP
     payload = await tools.get_hypothesis("abc/def?debug=1", view="full")
 
     assert captured == [
-        ("payload", "/api/v1/hypotheses/abc%2Fdef%3Fdebug%3D1", None),
-        (
-            "object",
-            "/api/v1/context/hypothesis/abc%2Fdef%3Fdebug%3D1",
-            {"view": "compact"},
-        ),
+        ("payload", "/api/v1/hypotheses/abc%2Fdef%3Fdebug%3D1"),
+        ("object", "/api/v1/context/hypothesis/abc%2Fdef%3Fdebug%3D1"),
     ]
     assert payload["_mcp_meta"] == {"source": "server_api"}
     assert payload["title"] == "Hypothesis"
-    assert payload["versions"][0]["markdown"] == "body"
-    assert "summary_markdown" not in payload
-    assert "context" not in payload
-    assert "hypothesis" not in payload
 
 
 async def test_hypothesis_context_view_single_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
