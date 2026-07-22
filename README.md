@@ -1,14 +1,14 @@
 # Lacuna Research MCP
 
-**Give your coding agent a structured map of machine learning research—from literature discovery to novel research ideas.**
+> 🔬 **Empower your coding agent for machine learning research.**
 
-Lacuna Research MCP helps AI researchers and their agents move from exploring a problem to finding evidence, forming ideas, and identifying the people and institutions shaping a field:
+Lacuna Research MCP gives AI researchers and their agents:
 
-- **Discover novel research proposals.** Explore AI-generated proposals that bridge distant research directions, built with [Alien Science](https://openreview.net/pdf?id=XZWkDET1ia) to seek combinations that are coherent yet less cognitively available to the current research community.
-- **Navigate research directions.** Follow clusters of recurring conceptual elements—the transferable “idea atoms” described in Alien Science—along with their papers, authors, related directions, and research proposals.
-- **Search and read the literature.** Find relevant or recent papers with lexical and semantic search, then give your agent compact Markdown summaries, figures, concepts, and links back to the source pages.
-- **Understand researchers and their influence.** Trace authors through their publications, research directions, impact, and neighboring researchers.
-- **Map the research landscape.** Compare venues by recent activity, leading researchers, representative papers, and topical directions; inspect institutions through their publication and author networks.
+- **Novel research proposals.** Explore coherent, non-obvious ideas generated with [Alien Science](https://openreview.net/pdf?id=XZWkDET1ia).
+- **Research directions.** Navigate concept clusters with linked papers, authors, related directions, and proposals.
+- **Agent-ready literature.** Search relevant or recent papers and read compact Markdown summaries with source links.
+- **Researcher intelligence.** Trace authors, publications, directions, impact, and related researchers.
+- **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
 
 [Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. At the snapshot described in the [Lacuna paper](https://arxiv.org/abs/2606.26246), the map contains 15,259,720 concept elements from 733,795 paper pages, organized into 27,017 research directions.
 
