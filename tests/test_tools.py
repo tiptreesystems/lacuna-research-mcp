@@ -216,43 +216,6 @@ async def test_search_passes_year_sort_with_default_profile(
     assert seen_params["ranking_profile"] == "default"
 
 
-async def test_search_metadata_uses_mcp_meta(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_api_payload(
-        path: str, *, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        assert path == "/api/v1/search"
-        assert params is not None
-        assert params["type"] == "paper"
-        assert params["ranking_profile"] == "default"
-        return {"requested_type": "upstream", "normalized_type": "upstream"}
-
-    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
-
-    payload = await tools.search_lacuna("alignment", search_type="papers", debug=True)
-
-    assert payload["requested_type"] == "upstream"
-    assert payload["normalized_type"] == "upstream"
-    assert payload["_mcp_meta"] == {
-        "requested_type": "papers",
-        "normalized_type": "paper",
-        "requested_ranking_profile": None,
-        "normalized_ranking_profile": "default",
-    }
-
-
-async def test_search_omits_mcp_meta_echo_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_api_payload(
-        path: str, *, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
-        return {}
-
-    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
-
-    payload = await tools.search_lacuna("alignment", search_type="papers")
-
-    assert "_mcp_meta" not in payload
-
-
 async def test_search_accepts_explicit_paper_ranking_profile(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -268,16 +231,13 @@ async def test_search_accepts_explicit_paper_ranking_profile(
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
 
-    payload = await tools.search_lacuna(
+    await tools.search_lacuna(
         "attention is all you need",
         search_type="paper",
         ranking_profile="lexical",
-        debug=True,
     )
 
     assert captured_params["ranking_profile"] == "default"
-    assert payload["_mcp_meta"]["requested_ranking_profile"] == "lexical"
-    assert payload["_mcp_meta"]["normalized_ranking_profile"] == "default"
 
 
 async def test_search_passes_inclusive_date_bounds(monkeypatch: pytest.MonkeyPatch) -> None:

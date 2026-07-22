@@ -4,7 +4,7 @@ import math
 from collections.abc import Callable
 from typing import Any, Literal
 
-from lacuna_research_mcp.client import api_object, api_payload, ensure_mcp_meta
+from lacuna_research_mcp.client import api_object, api_payload
 from lacuna_research_mcp.config import (
     AUTHOR_COLLECTION_MAX_LIMIT,
     DEFAULT_AUTHOR_LIST_LIMIT,
@@ -233,7 +233,6 @@ async def search_lacuna(
     sort: str = "relevance",
     ranking_profile: str | None = None,
     fields: str | None = None,
-    debug: bool = False,
 ) -> dict[str, Any]:
     """Search Lacuna's server-side API.
 
@@ -294,8 +293,6 @@ async def search_lacuna(
     fields selects the experimental lexical ranker; for a default
     relevance-sorted paper search, it also bypasses the lexical+semantic
     ranker. Leave unset unless you specifically want that.
-    debug echoes the requested/normalized type and ranking profile back in
-    `_mcp_meta`; off by default to keep responses lean.
     """
     normalized_type = _normalize_search_type(search_type)
     normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, normalized_type)
@@ -332,17 +329,7 @@ async def search_lacuna(
     if normalized_fields is not None:
         params["fields"] = normalized_fields
 
-    payload = await api_payload("/api/v1/search", params=params)
-    if debug:
-        ensure_mcp_meta(payload).update(
-            {
-                "requested_type": search_type,
-                "normalized_type": normalized_type,
-                "requested_ranking_profile": ranking_profile,
-                "normalized_ranking_profile": normalized_ranking_profile,
-            }
-        )
-    return payload
+    return await api_payload("/api/v1/search", params=params)
 
 
 async def _paper_payload(
