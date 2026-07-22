@@ -82,6 +82,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
 
     assert fake_mcp.name == "lacuna-research-search"
     assert fake_mcp.instructions is server.SERVER_INSTRUCTIONS
+    assert "expanded conference names may not be indexed" in fake_mcp.instructions
     assert fake_mcp.lifespan is server._lifespan
     # Default to WARNING so httpx's INFO request-URL logs (with the query
     # string) do not reach stderr during normal operation.
