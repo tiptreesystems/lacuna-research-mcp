@@ -1,12 +1,17 @@
-# Lacuna Research MCP
-
-### 🔬 Empower your coding agent for machine learning research
-
+<p align="center">
+  <img src="assets/banner.svg" alt="Lacuna Research MCP — Empower your coding agent for machine learning research" width="100%" />
+</p>
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.11+" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-server-7C3AED" alt="MCP server" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" /></a>
 </p>
+
+# Lacuna Research MCP
+
+### 🔬 Empower your coding agent for machine learning research
+
+
 
 Lacuna Research MCP gives AI researchers' coding agents:
 
@@ -17,8 +22,6 @@ Lacuna Research MCP gives AI researchers' coding agents:
 - **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
 
 [Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. At the snapshot described in the [Lacuna paper](https://arxiv.org/abs/2606.26246), the map contains 15,259,720 concept elements from 733,795 paper pages, organized into 27,017 research directions.
-
-The server is standalone: it talks to the public Lacuna deployment at `https://lacuna.tiptreesystems.com` and does not depend on the Lacuna repository.
 
 [Install](#install) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
 

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-label="Lacuna Research MCP — Empower your coding agent for machine learning research">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0c1416"/>
+      <stop offset="0.55" stop-color="#122024"/>
+      <stop offset="1" stop-color="#0c1416"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.22" cy="0.5" r="0.55">
+      <stop offset="0" stop-color="#8ab5b5" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#8ab5b5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="300" rx="16" fill="url(#bg)"/>
+  <rect width="1200" height="300" rx="16" fill="url(#glow)"/>
+  <rect x="0.5" y="0.5" width="1199" height="299" rx="15.5" fill="none" stroke="#8ab5b5" stroke-opacity="0.25"/>
+
+  <!-- Lacuna mark: three panels and the missing one (the lacuna) -->
+  <g transform="translate(90,40) scale(0.52) translate(-100,0)" opacity="0.9">
+    <polygon points="100,60 100,300 220,240 220,0" fill="#8ab5b5"/>
+    <polygon points="170,100 170,340 290,280 290,40" fill="#b8d4d4"/>
+    <polygon points="240,140 240,380 360,320 360,80" fill="none" stroke="#8ab5b5" stroke-width="6" stroke-dasharray="18 14" opacity="0.55"/>
+    <polygon points="310,180 310,420 430,360 430,120" fill="#ffffff"/>
+  </g>
+
+  <g font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+    <text x="340" y="140" font-size="58" font-weight="700" fill="#ffffff" letter-spacing="0.5">Lacuna Research MCP</text>
+    <text x="342" y="188" font-size="24" fill="#b8d4d4">Empower your coding agent for machine learning research</text>
+    <text x="342" y="236" font-size="20" fill="#8ab5b5" opacity="0.8">proposals · papers · research directions · authors · venues · institutions</text>
+  </g>
+</svg>
