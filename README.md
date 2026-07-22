@@ -9,7 +9,7 @@
 
 # Lacuna Research MCP
 
-### 🔬 Ground your coding agent in novel research ideas, papers, and the ML research landscape
+### 🔬 Ground your coding agent in novel ideas, papers, and the ML landscape
 
 
 
