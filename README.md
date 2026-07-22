@@ -1,8 +1,16 @@
 # Lacuna Research MCP
 
-MCP server for [Lacuna](https://lacuna.tiptreesystems.com), a research map for machine learning built by [Tiptree Systems](https://tiptreesystems.com).
+**Give your coding agent a structured map of machine learning research—from literature discovery to novel research ideas.**
 
-Lacuna extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. At the snapshot described in the [Lacuna paper](https://arxiv.org/abs/2606.26246), the map contains 15,259,720 concept elements from 733,795 paper pages, organized into 27,017 research directions. This server exposes that map as MCP tools, so a coding agent or assistant can search the literature inside its existing tool loop, with every answer linking back to the underlying pages.
+Lacuna Research MCP helps AI researchers and their agents move from exploring a problem to finding evidence, forming ideas, and identifying the people and institutions shaping a field:
+
+- **Discover novel research proposals.** Explore AI-generated proposals that bridge distant research directions, built with [Alien Science](https://openreview.net/pdf?id=XZWkDET1ia) to seek combinations that are coherent yet less cognitively available to the current research community.
+- **Navigate research directions.** Follow clusters of recurring conceptual elements—the transferable “idea atoms” described in Alien Science—along with their papers, authors, related directions, and research proposals.
+- **Search and read the literature.** Find relevant or recent papers with lexical and semantic search, then give your agent compact Markdown summaries, figures, concepts, and links back to the source pages.
+- **Understand researchers and their influence.** Trace authors through their publications, research directions, impact, and neighboring researchers.
+- **Map the research landscape.** Compare venues by recent activity, leading researchers, representative papers, and topical directions; inspect institutions through their publication and author networks.
+
+[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. At the snapshot described in the [Lacuna paper](https://arxiv.org/abs/2606.26246), the map contains 15,259,720 concept elements from 733,795 paper pages, organized into 27,017 research directions.
 
 The server is standalone: it talks to the public Lacuna deployment at `https://lacuna.tiptreesystems.com` and does not depend on the Lacuna repository.
 
