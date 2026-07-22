@@ -562,7 +562,27 @@ async def test_author_collection_tools_forward_pagination(
     assert payload["author_id"] == "aut_1/extra"
 
 
-@pytest.mark.parametrize("tool", (tools.get_author_papers, tools.get_author_directions))
+async def test_author_neighbors_forwards_pagination(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert path == "/api/v1/authors/aut_1%2Fextra/neighbors"
+        assert params == {"limit": 3, "offset": 6}
+        return {"neighbors": [], "neighbors_total": 9}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    payload = await tools.get_author_neighbors("aut_1/extra", limit=3, offset=6)
+
+    assert payload["author_id"] == "aut_1/extra"
+
+
+@pytest.mark.parametrize(
+    "tool",
+    (tools.get_author_papers, tools.get_author_directions, tools.get_author_neighbors),
+)
 @pytest.mark.parametrize(
     ("limit", "offset", "message"),
     (

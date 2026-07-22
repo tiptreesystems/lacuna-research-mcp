@@ -8,6 +8,7 @@ from lacuna_research_mcp.client import api_object, api_payload
 from lacuna_research_mcp.config import (
     AUTHOR_COLLECTION_MAX_LIMIT,
     DEFAULT_AUTHOR_LIST_LIMIT,
+    DEFAULT_AUTHOR_NEIGHBORS_LIMIT,
     DIRECTION_PAPERS_MAX_LIMIT,
     INSTITUTION_AUTHORS_MAX_LIMIT,
     SEARCH_MAX_LIMIT,
@@ -539,10 +540,18 @@ async def get_author_context(
     return payload
 
 
-async def get_author_neighbors(author_id_or_url: str) -> dict[str, Any]:
-    """Fetch neighboring/similar Lacuna authors."""
+async def get_author_neighbors(
+    author_id_or_url: str,
+    limit: int = DEFAULT_AUTHOR_NEIGHBORS_LIMIT,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Fetch one ranked page of neighboring/similar Lacuna authors."""
+    _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
     author_id = extract_route_key(author_id_or_url, "author")
-    payload = await api_payload(f"/api/v1/authors/{path_segment(author_id)}/neighbors")
+    payload = await api_payload(
+        f"/api/v1/authors/{path_segment(author_id)}/neighbors",
+        params={"limit": limit, "offset": offset},
+    )
     payload["author_id"] = author_id
     return payload
 

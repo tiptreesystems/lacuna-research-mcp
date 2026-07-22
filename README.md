@@ -182,7 +182,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 - `get_paper(artifact_id_or_url, view="context", figure_limit=None)`
   Paper lookup. `view="context"` (default) requests the compact agent-oriented context; other views are `"full"`, `"preview"`, `"blog"`, `"figures"`, `"concepts"`, or `"neighbors"`. In context view, `figure_limit` caps the figure preview (server default 3; pass 0 to suppress previews while keeping a `figures_truncated` signal).
 - Author tools:
-  `get_author_context(…, view="context")`, `get_author_papers`, `get_author_directions`, and `get_author_neighbors`. Start with `get_author_context`, which defaults to the compact agent-oriented view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry). Use the dedicated papers and directions tools to page through those collections without repeating the author context. `view="full"` returns the server-bounded full-shape context (collections remain capped at 100). Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
+  `get_author_context(…, view="context")`, `get_author_papers`, `get_author_directions`, and `get_author_neighbors`. Start with `get_author_context`, which defaults to the compact agent-oriented view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry). Use the dedicated papers, directions, and neighbors tools to page through those collections without repeating the author context. `view="full"` returns the server-bounded full-shape context (collections remain capped at 100). Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
 - Venue and institution tools:
   `get_venue_context(…, view="context")`, `get_institution_context(…, view="context")`, `get_institution_authors`. Context tools default to compact (capped lists, duplicated blocks dropped; venue keeps a recent-activity slice that always includes the requested `year`). Use `get_institution_authors` to page through an institution's complete author list.
 
@@ -198,7 +198,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 | `get_author_papers(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/papers` |
 | `get_author_directions(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/directions` |
 | `get_author_context(author_id_or_url, view="context", include_neighbors=false)` | `view="context"` → `GET /api/v1/context/author/{author_id}?view=compact`; `view="full"` → `GET /api/v1/context/author/{author_id}` (`include_neighbors=true` explicitly requests similar authors) |
-| `get_author_neighbors(author_id_or_url)` | `GET /api/v1/authors/{author_id}/neighbors` |
+| `get_author_neighbors(author_id_or_url, limit=8, offset=0)` | `GET /api/v1/authors/{author_id}/neighbors` |
 | `get_venue_context(venue_key_or_url, year, view="context")` | `view="context"` → `GET /api/v1/context/venue/{vkey}[/{year}]?view=compact`; `view="full"` → same route without `view` |
 | `get_institution_context(institution_key_or_url, view="context")` | `view="context"` → `GET /api/v1/context/institution/{ikey}?view=compact`; `view="full"` → same route without `view` |
 | `get_institution_authors(institution_key_or_url, limit=50, offset=0)` | `GET /api/v1/institutions/{ikey}/authors` |
