@@ -72,7 +72,11 @@ All searches use the server default unless `ranking_profile` is provided. The MC
 
 ## Install
 
-The easiest setup uses [`uvx`](https://docs.astral.sh/uv/guides/tools/) to run the server directly from GitHub. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first; Lacuna Research MCP requires Python 3.11 or newer.
+The easiest way to install Lacuna Research MCP is to ask your coding agent, such as Codex or Claude Code:
+
+> Install and configure the Lacuna Research MCP from https://github.com/tiptreesystems/lacuna-research-mcp for this client.
+
+For manual setup, the instructions below use [`uvx`](https://docs.astral.sh/uv/guides/tools/) to run the server directly from GitHub. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first; Lacuna Research MCP requires Python 3.11 or newer.
 
 ### Codex
 
