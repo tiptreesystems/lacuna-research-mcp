@@ -241,7 +241,7 @@ async def test_api_payload_requires_object(monkeypatch: pytest.MonkeyPatch) -> N
         await client.api_payload("/list")
 
 
-async def test_api_payload_adds_mcp_meta_without_overwriting_upstream_keys(
+async def test_api_payload_removes_mcp_meta_without_overwriting_upstream_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     set_runtime_config(monkeypatch, max_retries=0)
@@ -253,7 +253,7 @@ async def test_api_payload_adds_mcp_meta_without_overwriting_upstream_keys(
     payload = await client.api_payload("/object")
 
     assert payload["source"] == "upstream"
-    assert payload["_mcp_meta"] == {"seen": True, "source": "server_api"}
+    assert "_mcp_meta" not in payload
 
 
 async def test_api_retries_transient_status_then_succeeds(

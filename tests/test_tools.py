@@ -382,7 +382,7 @@ async def test_hypothesis_full_view_uses_version_endpoint_only(
         path: str, *, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         captured.append(("payload", path))
-        return {"_mcp_meta": {"source": "server_api"}, "versions": []}
+        return {"versions": []}
 
     async def fail_api_object(
         path: str, *, params: dict[str, Any] | None = None
@@ -395,7 +395,7 @@ async def test_hypothesis_full_view_uses_version_endpoint_only(
     payload = await tools.get_hypothesis("abc/def?debug=1", view="full")
 
     assert captured == [("payload", "/api/v1/hypotheses/abc%2Fdef%3Fdebug%3D1")]
-    assert payload["_mcp_meta"] == {"source": "server_api"}
+    assert "_mcp_meta" not in payload
     assert payload["hypothesis_id"] == "abc/def?debug=1"
 
 

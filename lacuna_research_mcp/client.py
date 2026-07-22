@@ -334,18 +334,9 @@ async def api_object(path: str, *, params: dict[str, Any] | None = None) -> dict
         message = f"Lacuna API returned {type(payload).__name__} for {path}; expected JSON object"
         logger.error(message)
         raise LacunaMCPError(message)
+    payload.pop("_mcp_meta", None)
     return payload
-
-
-def ensure_mcp_meta(payload: dict[str, Any]) -> dict[str, Any]:
-    metadata = payload.get("_mcp_meta")
-    if not isinstance(metadata, dict):
-        metadata = {}
-        payload["_mcp_meta"] = metadata
-    return metadata
 
 
 async def api_payload(path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    payload = await api_object(path, params=params)
-    ensure_mcp_meta(payload)["source"] = "server_api"
-    return payload
+    return await api_object(path, params=params)
