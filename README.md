@@ -1,12 +1,12 @@
 # Lacuna Research MCP
 
-> 🔬 **Empower your coding agent for machine learning research.**
+### 🔬 Empower your coding agent for machine learning research
 
-Lacuna Research MCP gives AI researchers and their agents:
+Lacuna Research MCP gives AI researchers' coding agents:
 
 - **Novel research proposals.** Explore coherent, non-obvious ideas generated with [Alien Science](https://openreview.net/pdf?id=XZWkDET1ia).
 - **Research directions.** Navigate concept clusters with linked papers, authors, related directions, and proposals.
-- **Agent-ready literature.** Search relevant or recent papers and read compact Markdown summaries with source links.
+- **Agent-ready literature.** Search recent papers in markdown with source links.
 - **Researcher intelligence.** Trace authors, publications, directions, impact, and related researchers.
 - **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
 
