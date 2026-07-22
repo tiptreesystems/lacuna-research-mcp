@@ -6,6 +6,8 @@ Lacuna extracts concept elements from ML paper pages, clusters them into researc
 
 The server is standalone: it talks to the public Lacuna deployment at `https://lacuna.tiptreesystems.com` and does not depend on the Lacuna repository.
 
+[Install](#install) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
+
 ## Install
 
 The easiest way to install Lacuna Research MCP is to ask your coding agent, such as Codex or Claude Code:
