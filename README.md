@@ -260,8 +260,6 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
   Helpers that accept either raw ids or Lacuna page URLs and extract safe API path segments.
 - `lacuna_research_mcp/normalize.py`
   Response post-processing for relative Lacuna URLs and markdown links.
-- `lacuna_research_mcp/truncation.py`
-  Local slicing and metadata for large author-related arrays returned by upstream APIs.
 - `lacuna_research_mcp/errors.py`
   User-facing exception type for Lacuna API access failures.
 
