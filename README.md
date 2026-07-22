@@ -6,70 +6,6 @@ Lacuna extracts concept elements from ML paper pages, clusters them into researc
 
 The server is standalone: it talks to the public Lacuna deployment at `https://lacuna.tiptreesystems.com` and does not depend on the Lacuna repository.
 
-## Scope
-
-The corpus covers machine learning and AI research: papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
-
-## What it exposes
-
-- `search_lacuna`
-  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Explicit paper searches (`search_type="paper"`) use the server's production lexical+semantic ranker when the other ranking arguments remain at their defaults. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
-- `get_hypothesis(hypothesis_id_or_url, view="context")`
-  Hypothesis/proposal. `view="context"` (default) is a compact single-fetch proposal context (summary, abstract, linked directions); `view="full"` returns the full two-endpoint merge with version history and signal counts.
-- `get_direction(cluster_id_or_url, view="context")`
-  Research direction/cluster. `view="context"` (default) requests the compact agent-oriented summary; `view="full"` returns the raw cluster record.
-- `get_direction_papers(cluster_id_or_url, page, limit, view="compact")`
-  Paginated papers attached to a direction. `view="compact"` (default) returns citation-ready rows (id, url, title, year, venue, a few authors, abstract snippet); `view="full"` returns the raw upstream paper records.
-- `get_paper(artifact_id_or_url, view="context", figure_limit=None)`
-  Paper lookup. `view="context"` (default) requests the compact agent-oriented context; other views are `"full"`, `"preview"`, `"blog"`, `"figures"`, `"concepts"`, or `"neighbors"`. In context view, `figure_limit` caps the figure preview (server default 3; pass 0 to suppress previews while keeping a `figures_truncated` signal).
-- Author tools:
-  `get_author`, `get_author_papers`, `get_author_directions`, `get_author_context(…, view="context")`, `get_author_impact`, `get_author_neighbors`. Use the dedicated papers and directions tools to page through those collections without repeating the author context. `get_author_context` defaults to the compact view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry); `view="full"` returns the bounded full-shape context (server collections remain capped at 100) and re-enables the `*_limit`/`full` slicing params. Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
-- Venue and institution tools:
-  `get_venue_context(…, view="context")`, `get_institution_context(…, view="context")`, `get_institution_authors`. Context tools default to compact (capped lists, duplicated blocks dropped; venue keeps a recent-activity slice that always includes the requested `year`). Use `get_institution_authors` to page through an institution's complete author list.
-
-## Wrapped APIs
-
-| MCP tool | Lacuna API endpoint |
-| --- | --- |
-| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker. Allowed fields are `title`, `abstract`, `summary`, `concepts`, `name`, `top_names`, `venue`, each valid only for the types that carry it — `title`: paper/cluster/venue/hypothesis; `abstract`/`summary`/`concepts`: paper; `name`: author/institution/venue; `top_names`: cluster/hypothesis; `venue`: paper/venue (`search_type="all"` spans all). Weights must satisfy `0 < weight <= 100`. Unknown fields, out-of-range weights, type-incompatible fields, and `fields` combined with `ranking_profile="semantic"` are rejected, since the server would otherwise silently drop, cap, or ignore them. `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
-| `get_hypothesis(hypothesis_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/hypothesis/{hypothesis_id}?view=compact`; `view="full"` → `GET /api/v1/hypotheses/{hypothesis_id}` and `GET /api/v1/context/hypothesis/{hypothesis_id}` |
-| `get_direction(cluster_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/direction/{cluster_id}?view=compact`; `view="full"` → `GET /api/v1/clusters/{cluster_id}` |
-| `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
-| `get_paper(artifact_id_or_url, view="context", figure_limit=None)` | `view="context"` → `GET /api/v1/context/paper/{artifact_id}?view=compact` (`&figure_limit=N` when set); `view="full"` → `GET /api/v1/papers/{artifact_id}`; `view="preview"` → `…/preview`; `view="blog"` → `…/blog`; `view="figures"` → `…/figures`; `view="concepts"` → `…/concepts`; `view="neighbors"` → `…/neighbors` |
-| `get_author(author_id_or_url, papers_limit, papers_offset, levels_limit, levels_offset, full)` | `GET /api/v1/authors/{author_id}` |
-| `get_author_papers(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/papers` |
-| `get_author_directions(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/directions` |
-| `get_author_context(author_id_or_url, view="context", papers_limit, papers_offset, impact_clusters_limit, impact_clusters_offset, levels_limit, levels_offset, full, include_neighbors=false)` | `view="context"` → `GET /api/v1/context/author/{author_id}?view=compact`; `view="full"` → `GET /api/v1/context/author/{author_id}` (slicing params apply only to `view="full"`; `include_neighbors=true` explicitly requests similar authors) |
-| `get_author_impact(author_id_or_url, impact_clusters_limit, impact_clusters_offset, full)` | `GET /api/v1/authors/{author_id}/impact` |
-| `get_author_neighbors(author_id_or_url)` | `GET /api/v1/authors/{author_id}/neighbors` |
-| `get_venue_context(venue_key_or_url, year, view="context")` | `view="context"` → `GET /api/v1/context/venue/{vkey}[/{year}]?view=compact`; `view="full"` → same route without `view` |
-| `get_institution_context(institution_key_or_url, view="context")` | `view="context"` → `GET /api/v1/context/institution/{ikey}?view=compact`; `view="full"` → same route without `view` |
-| `get_institution_authors(institution_key_or_url, limit=50, offset=0)` | `GET /api/v1/institutions/{ikey}/authors` |
-
-For id-or-URL arguments, pass either the raw id returned by `search_lacuna` or the corresponding Lacuna page URL. The MCP normalizes Lacuna-relative `url` and `*_url` fields to absolute URLs, and it also absolutifies Lacuna links inside fields named `summary_markdown`, `content`, or `description`.
-
-Author endpoints can be very large for prolific authors. `get_author`, `get_author_impact`, and `get_author_context` with `view="full"` slice large `papers`, `impact_clusters`, and `levels.cluster` arrays by default with a limit of 50 and a maximum requested limit of 200. Responses include `*_total`, `*_returned`, `*_truncated`, and `truncation` metadata. Pass offsets to page through those arrays, or set `full=true` to skip MCP-side slicing. For `get_author_context`, the upstream server collections remain capped at 100 even with `full=true`. (The default compact view is capped server-side, so these MCP-side slicing params and verbose truncation metadata apply only to `view="full"`.)
-
-Search requests are capped at 50 results per call, and direction-paper page
-requests are capped at 100 results per call.
-In `search_lacuna`, `date_from` and `date_to` are inclusive publication-date
-bounds. Accepted formats are `YYYY`, `YYYY-MM`, and `YYYY-MM-DD`; for example,
-`date_from="2020", date_to="2022-03"` includes papers from January 1, 2020
-through March 31, 2022.
-
-`search_lacuna` exposes these ranking profiles:
-
-- `default` / `lexical`
-  The default profile for all searches. With `search_type="paper"`, `sort="relevance"`, and `fields` unset, it uses the server's production lexical+semantic ranker with graceful fallback. The MCP's default `search_type="all"` uses the server's default lexical ranking instead.
-- `semantic`
-  Use for embedding-based paper retrieval. The semantic query omits the normal lexical ranking leg, but the server can still overlay exact-title lexical matches. Only supported for `paper` and `all` searches (only papers have semantic embeddings).
-- `bm25_title_abstract` / `bm25`
-  Use for lexical matching constrained to title and abstract. Rejected for `author` and `institution` searches (those records have no title or abstract fields).
-
-All searches use the server default unless `ranking_profile` is provided. The MCP rejects unsupported profile/type combinations because the server would otherwise fall back to substring search and silently ignore the requested ranking profile.
-
-`sort` accepts `relevance` (default), `year_desc`, and `year_asc`. Year sorts cannot be combined with `ranking_profile="semantic"` — the server would silently ignore the sort — so the MCP rejects that combination; for recent-and-relevant queries, keep semantic ranking and constrain recency with `date_from`/`date_to` instead.
-
 ## Install
 
 The easiest way to install Lacuna Research MCP is to ask your coding agent, such as Codex or Claude Code:
@@ -200,6 +136,80 @@ python -m pip install -U pip
 python -m pip install -e .
 ```
 
+## First use
+
+After connecting the server, call:
+
+1. `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=10)`
+2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="papers", limit=10)` (production lexical+semantic paper ranking by default)
+3. `get_hypothesis(hypothesis_id_or_url="bd35de182c2325ae")`
+4. `get_paper(artifact_id_or_url="art_79c57fbfec094f26b79c422cf08fed34")` (defaults to `view="context"`)
+5. `get_direction(cluster_id_or_url=25108)` (defaults to `view="context"`)
+
+## Scope
+
+The corpus covers machine learning and AI research: papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
+
+## What it exposes
+
+- `search_lacuna`
+  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Explicit paper searches (`search_type="paper"`) use the server's production lexical+semantic ranker when the other ranking arguments remain at their defaults. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
+- `get_hypothesis(hypothesis_id_or_url, view="context")`
+  Hypothesis/proposal. `view="context"` (default) is a compact single-fetch proposal context (summary, abstract, linked directions); `view="full"` returns the full two-endpoint merge with version history and signal counts.
+- `get_direction(cluster_id_or_url, view="context")`
+  Research direction/cluster. `view="context"` (default) requests the compact agent-oriented summary; `view="full"` returns the raw cluster record.
+- `get_direction_papers(cluster_id_or_url, page, limit, view="compact")`
+  Paginated papers attached to a direction. `view="compact"` (default) returns citation-ready rows (id, url, title, year, venue, a few authors, abstract snippet); `view="full"` returns the raw upstream paper records.
+- `get_paper(artifact_id_or_url, view="context", figure_limit=None)`
+  Paper lookup. `view="context"` (default) requests the compact agent-oriented context; other views are `"full"`, `"preview"`, `"blog"`, `"figures"`, `"concepts"`, or `"neighbors"`. In context view, `figure_limit` caps the figure preview (server default 3; pass 0 to suppress previews while keeping a `figures_truncated` signal).
+- Author tools:
+  `get_author`, `get_author_papers`, `get_author_directions`, `get_author_context(…, view="context")`, `get_author_impact`, `get_author_neighbors`. Use the dedicated papers and directions tools to page through those collections without repeating the author context. `get_author_context` defaults to the compact view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry); `view="full"` returns the bounded full-shape context (server collections remain capped at 100) and re-enables the `*_limit`/`full` slicing params. Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
+- Venue and institution tools:
+  `get_venue_context(…, view="context")`, `get_institution_context(…, view="context")`, `get_institution_authors`. Context tools default to compact (capped lists, duplicated blocks dropped; venue keeps a recent-activity slice that always includes the requested `year`). Use `get_institution_authors` to page through an institution's complete author list.
+
+## Wrapped APIs
+
+| MCP tool | Lacuna API endpoint |
+| --- | --- |
+| `search_lacuna(query, search_type, limit, offset, date_from, date_to, venue, sort, ranking_profile, fields, debug)` | `GET /api/v1/search` (`fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker. Allowed fields are `title`, `abstract`, `summary`, `concepts`, `name`, `top_names`, `venue`, each valid only for the types that carry it — `title`: paper/cluster/venue/hypothesis; `abstract`/`summary`/`concepts`: paper; `name`: author/institution/venue; `top_names`: cluster/hypothesis; `venue`: paper/venue (`search_type="all"` spans all). Weights must satisfy `0 < weight <= 100`. Unknown fields, out-of-range weights, type-incompatible fields, and `fields` combined with `ranking_profile="semantic"` are rejected, since the server would otherwise silently drop, cap, or ignore them. `debug=true` echoes the requested/normalized type and ranking profile in `_mcp_meta`, off by default) |
+| `get_hypothesis(hypothesis_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/hypothesis/{hypothesis_id}?view=compact`; `view="full"` → `GET /api/v1/hypotheses/{hypothesis_id}` and `GET /api/v1/context/hypothesis/{hypothesis_id}` |
+| `get_direction(cluster_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/direction/{cluster_id}?view=compact`; `view="full"` → `GET /api/v1/clusters/{cluster_id}` |
+| `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
+| `get_paper(artifact_id_or_url, view="context", figure_limit=None)` | `view="context"` → `GET /api/v1/context/paper/{artifact_id}?view=compact` (`&figure_limit=N` when set); `view="full"` → `GET /api/v1/papers/{artifact_id}`; `view="preview"` → `…/preview`; `view="blog"` → `…/blog`; `view="figures"` → `…/figures`; `view="concepts"` → `…/concepts`; `view="neighbors"` → `…/neighbors` |
+| `get_author(author_id_or_url, papers_limit, papers_offset, levels_limit, levels_offset, full)` | `GET /api/v1/authors/{author_id}` |
+| `get_author_papers(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/papers` |
+| `get_author_directions(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/directions` |
+| `get_author_context(author_id_or_url, view="context", papers_limit, papers_offset, impact_clusters_limit, impact_clusters_offset, levels_limit, levels_offset, full, include_neighbors=false)` | `view="context"` → `GET /api/v1/context/author/{author_id}?view=compact`; `view="full"` → `GET /api/v1/context/author/{author_id}` (slicing params apply only to `view="full"`; `include_neighbors=true` explicitly requests similar authors) |
+| `get_author_impact(author_id_or_url, impact_clusters_limit, impact_clusters_offset, full)` | `GET /api/v1/authors/{author_id}/impact` |
+| `get_author_neighbors(author_id_or_url)` | `GET /api/v1/authors/{author_id}/neighbors` |
+| `get_venue_context(venue_key_or_url, year, view="context")` | `view="context"` → `GET /api/v1/context/venue/{vkey}[/{year}]?view=compact`; `view="full"` → same route without `view` |
+| `get_institution_context(institution_key_or_url, view="context")` | `view="context"` → `GET /api/v1/context/institution/{ikey}?view=compact`; `view="full"` → same route without `view` |
+| `get_institution_authors(institution_key_or_url, limit=50, offset=0)` | `GET /api/v1/institutions/{ikey}/authors` |
+
+For id-or-URL arguments, pass either the raw id returned by `search_lacuna` or the corresponding Lacuna page URL. The MCP normalizes Lacuna-relative `url` and `*_url` fields to absolute URLs, and it also absolutifies Lacuna links inside fields named `summary_markdown`, `content`, or `description`.
+
+Author endpoints can be very large for prolific authors. `get_author`, `get_author_impact`, and `get_author_context` with `view="full"` slice large `papers`, `impact_clusters`, and `levels.cluster` arrays by default with a limit of 50 and a maximum requested limit of 200. Responses include `*_total`, `*_returned`, `*_truncated`, and `truncation` metadata. Pass offsets to page through those arrays, or set `full=true` to skip MCP-side slicing. For `get_author_context`, the upstream server collections remain capped at 100 even with `full=true`. (The default compact view is capped server-side, so these MCP-side slicing params and verbose truncation metadata apply only to `view="full"`.)
+
+Search requests are capped at 50 results per call, and direction-paper page
+requests are capped at 100 results per call.
+In `search_lacuna`, `date_from` and `date_to` are inclusive publication-date
+bounds. Accepted formats are `YYYY`, `YYYY-MM`, and `YYYY-MM-DD`; for example,
+`date_from="2020", date_to="2022-03"` includes papers from January 1, 2020
+through March 31, 2022.
+
+`search_lacuna` exposes these ranking profiles:
+
+- `default` / `lexical`
+  The default profile for all searches. With `search_type="paper"`, `sort="relevance"`, and `fields` unset, it uses the server's production lexical+semantic ranker with graceful fallback. The MCP's default `search_type="all"` uses the server's default lexical ranking instead.
+- `semantic`
+  Use for embedding-based paper retrieval. The semantic query omits the normal lexical ranking leg, but the server can still overlay exact-title lexical matches. Only supported for `paper` and `all` searches (only papers have semantic embeddings).
+- `bm25_title_abstract` / `bm25`
+  Use for lexical matching constrained to title and abstract. Rejected for `author` and `institution` searches (those records have no title or abstract fields).
+
+All searches use the server default unless `ranking_profile` is provided. The MCP rejects unsupported profile/type combinations because the server would otherwise fall back to substring search and silently ignore the requested ranking profile.
+
+`sort` accepts `relevance` (default), `year_desc`, and `year_asc`. Year sorts cannot be combined with `ranking_profile="semantic"` — the server would silently ignore the sort — so the MCP rejects that combination; for recent-and-relevant queries, keep semantic ranking and constrain recency with `date_from`/`date_to` instead.
+
 ## Environment variables
 
 - `LACUNA_SITE_URL`
@@ -237,16 +247,6 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
   Local slicing and metadata for large author-related arrays returned by upstream APIs.
 - `lacuna_research_mcp/errors.py`
   User-facing exception type for Lacuna API access failures.
-
-## First use
-
-After connecting the server, call:
-
-1. `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=10)`
-2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="papers", limit=10)` (production lexical+semantic paper ranking by default)
-3. `get_hypothesis(hypothesis_id_or_url="bd35de182c2325ae")`
-4. `get_paper(artifact_id_or_url="art_79c57fbfec094f26b79c422cf08fed34")` (defaults to `view="context"`)
-5. `get_direction(cluster_id_or_url=25108)` (defaults to `view="context"`)
 
 ## Notes
 
