@@ -606,30 +606,6 @@ async def get_author_context(
     return payload
 
 
-async def get_author_impact(
-    author_id_or_url: str,
-    impact_clusters_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
-    impact_clusters_offset: int = 0,
-    full: bool = False,
-) -> dict[str, Any]:
-    """Fetch Lacuna's impact clusters for an author.
-
-    Large impact_clusters arrays are sliced by default for MCP usability. Set
-    full=True to return upstream arrays unsliced.
-    """
-    author_id = extract_route_key(author_id_or_url, "author")
-    payload = await api_payload(f"/api/v1/authors/{path_segment(author_id)}/impact")
-    truncate_payload_list_in_place(
-        payload,
-        "impact_clusters",
-        limit=impact_clusters_limit,
-        offset=impact_clusters_offset,
-        full=full,
-    )
-    payload["author_id"] = author_id
-    return payload
-
-
 async def get_author_neighbors(author_id_or_url: str) -> dict[str, Any]:
     """Fetch neighboring/similar Lacuna authors."""
     author_id = extract_route_key(author_id_or_url, "author")
@@ -734,7 +710,6 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_author_papers,
     get_author_directions,
     get_author_context,
-    get_author_impact,
     get_author_neighbors,
     get_venue_context,
     get_institution_context,
