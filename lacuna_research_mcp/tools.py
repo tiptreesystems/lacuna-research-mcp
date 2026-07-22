@@ -20,11 +20,6 @@ from lacuna_research_mcp.ids import (
     extract_venue_key_year,
     path_segment,
 )
-from lacuna_research_mcp.truncation import (
-    truncate_author_payload_in_place,
-    truncate_nested_author_payload_in_place,
-    truncate_payload_list_in_place,
-)
 
 _HYPOTHESIS_PASSTHROUGH_FIELDS = ("title", "url", "markdown_url")
 
@@ -533,13 +528,6 @@ async def get_author_directions(
 async def get_author_context(
     author_id_or_url: str,
     view: ContextView = "context",
-    papers_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
-    papers_offset: int = 0,
-    impact_clusters_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
-    impact_clusters_offset: int = 0,
-    levels_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
-    levels_offset: int = 0,
-    full: bool = False,
     include_neighbors: bool = False,
 ) -> dict[str, Any]:
     """Fetch agent-oriented context for a Lacuna author.
@@ -556,10 +544,7 @@ async def get_author_context(
       in place of the raw numeric `impact_clusters` telemetry, with the duplicated
       nested author record dropped server-side.
     - "full": the bounded full-shape author context (raw `impact_clusters`,
-      nested author record; server collections are capped at 100). The
-      papers_limit/offset, impact_clusters_limit/offset,
-      levels_limit/offset, and full= params apply only to this view, slicing the
-      upstream arrays MCP-side.
+      nested author record; server collections are capped at 100).
 
     Set include_neighbors=True to include similar authors as named, linkable
     records. Neighbor computation may add significant server latency.
@@ -569,38 +554,9 @@ async def get_author_context(
     params: dict[str, Any] = {"include_neighbors": include_neighbors}
     if normalized_view == "context":
         params["view"] = "compact"
-        payload = await api_payload(
-            f"/api/v1/context/author/{path_segment(author_id)}",
-            params=params,
-        )
-        payload["author_id"] = author_id
-        return payload
     payload = await api_payload(
         f"/api/v1/context/author/{path_segment(author_id)}",
         params=params,
-    )
-    truncate_author_payload_in_place(
-        payload,
-        papers_limit=papers_limit,
-        papers_offset=papers_offset,
-        levels_limit=levels_limit,
-        levels_offset=levels_offset,
-        full=full,
-    )
-    truncate_payload_list_in_place(
-        payload,
-        "impact_clusters",
-        limit=impact_clusters_limit,
-        offset=impact_clusters_offset,
-        full=full,
-    )
-    truncate_nested_author_payload_in_place(
-        payload,
-        papers_limit=papers_limit,
-        papers_offset=papers_offset,
-        levels_limit=levels_limit,
-        levels_offset=levels_offset,
-        full=full,
     )
     payload["author_id"] = author_id
     return payload

@@ -501,7 +501,7 @@ async def test_paper_context_rejects_negative_figure_limit() -> None:
         await tools.get_paper("art_ok", figure_limit=-1)
 
 
-async def test_author_context_truncates_nested_author_payload(
+async def test_author_context_full_passes_through_server_bounded_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def fake_api_payload(
@@ -518,11 +518,11 @@ async def test_author_context_truncates_nested_author_payload(
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
 
-    payload = await tools.get_author_context("aut_1", view="full", papers_limit=1, levels_limit=1)
+    payload = await tools.get_author_context("aut_1", view="full")
 
-    assert payload["author"]["papers"] == [0]
-    assert payload["author"]["levels"]["cluster"] == [0]
-    assert payload["truncated"] is True
+    assert payload["author"]["papers"] == [0, 1, 2]
+    assert payload["author"]["levels"]["cluster"] == [0, 1, 2]
+    assert "truncated" not in payload
     assert payload["author_id"] == "aut_1"
 
 
@@ -541,7 +541,7 @@ async def test_author_context_compact_skips_local_truncation(
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
 
-    payload = await tools.get_author_context("aut_1", papers_limit=1)
+    payload = await tools.get_author_context("aut_1")
 
     assert captured == [{"include_neighbors": False, "view": "compact"}]
     # MCP-side truncation is skipped in compact mode, so papers are untouched and
