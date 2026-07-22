@@ -320,18 +320,16 @@ async def test_detail_ids_are_quoted_in_paths(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
 
     await tools.get_paper("art_ok/extra?debug=1")
-    await tools.get_author("author_ok/extra?debug=1")
     await tools.get_venue_context("venue_ok/2025?debug=1")
     await tools.get_institution_context("inst_ok/extra?debug=1")
 
     assert captured == [
         "/api/v1/context/paper/art_ok%2Fextra%3Fdebug%3D1",
-        "/api/v1/authors/author_ok%2Fextra%3Fdebug%3D1",
         "/api/v1/context/venue/venue_ok%2F2025%3Fdebug%3D1",
         "/api/v1/context/institution/inst_ok%2Fextra%3Fdebug%3D1",
     ]
     # venue/institution context now default to the compact server view.
-    assert captured_params == [{"view": "compact"}, None, {"view": "compact"}, {"view": "compact"}]
+    assert captured_params == [{"view": "compact"}, {"view": "compact"}, {"view": "compact"}]
 
 
 async def test_paper_views_map_to_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -406,12 +404,10 @@ async def test_url_derived_ids_are_unquoted_before_api_path_quoting(
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
 
-    await tools.get_author(f"{config.DEFAULT_SITE_URL}/author/profile/Smith%20Alice")
     await tools.get_venue_context(f"{config.DEFAULT_SITE_URL}/venue/ACM%2FSIGIR/2024")
     await tools.get_institution_context(f"{config.DEFAULT_SITE_URL}/institution/ACME%2FResearch")
 
     assert captured == [
-        "/api/v1/authors/Smith%20Alice",
         "/api/v1/context/venue/ACM%2FSIGIR/2024",
         "/api/v1/context/institution/ACME%2FResearch",
     ]

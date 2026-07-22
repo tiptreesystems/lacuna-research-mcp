@@ -498,38 +498,6 @@ async def get_paper(
     return await _paper_payload(artifact_id_or_url, route_template, params=params)
 
 
-async def get_author(
-    author_id_or_url: str,
-    papers_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
-    papers_offset: int = 0,
-    levels_limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
-    levels_offset: int = 0,
-    full: bool = False,
-) -> dict[str, Any]:
-    """Fetch a Lacuna author by author id or author URL.
-
-    Author profiles describe research output (papers, directions, impact). A
-    free-text `affiliation` field may be present but can be incomplete or
-    outdated and may not represent current employment; the corpus has no
-    biography or employment history, so do not infer those from this data.
-
-    Large paper lists are sliced by default for MCP usability. Set full=True to
-    return upstream arrays unsliced.
-    """
-    author_id = extract_route_key(author_id_or_url, "author")
-    payload = await api_payload(f"/api/v1/authors/{path_segment(author_id)}")
-    truncate_author_payload_in_place(
-        payload,
-        papers_limit=papers_limit,
-        papers_offset=papers_offset,
-        levels_limit=levels_limit,
-        levels_offset=levels_offset,
-        full=full,
-    )
-    payload["author_id"] = author_id
-    return payload
-
-
 async def get_author_papers(
     author_id_or_url: str,
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
@@ -763,7 +731,6 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_direction,
     get_direction_papers,
     get_paper,
-    get_author,
     get_author_papers,
     get_author_directions,
     get_author_context,
