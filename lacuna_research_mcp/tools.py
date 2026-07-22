@@ -21,8 +21,6 @@ from lacuna_research_mcp.ids import (
     path_segment,
 )
 
-_HYPOTHESIS_PASSTHROUGH_FIELDS = ("title", "url", "markdown_url")
-
 _SEARCH_TYPE_ALIASES = {
     "all": "all",
     "cluster": "cluster",
@@ -373,9 +371,9 @@ async def get_hypothesis(
     - "context" (default, recommended): compact single-fetch proposal context —
       summary_markdown, abstract, and linked directions, with the raw upstream
       record (whose markdown duplicates summary_markdown) dropped server-side.
-    - "full": the complete two-endpoint merge, including the raw hypothesis record,
-      version history, and signal counts. Larger; use only when you need versions
-      or signals.
+    - "full": the server's version record, including version history and signal
+      counts. Proposal bodies are in versions[].markdown. Use only when you need
+      versions or signals.
     """
     normalized_view = _normalize_view(view, _HYPOTHESIS_VIEW_ROUTES)
     hypothesis_id = extract_hypothesis_id(hypothesis_id_or_url)
@@ -388,15 +386,7 @@ async def get_hypothesis(
         payload["hypothesis_id"] = hypothesis_id
         return payload
     payload = await api_payload(f"/api/v1/hypotheses/{quoted_hypothesis_id}")
-    context = await api_object(f"/api/v1/context/hypothesis/{quoted_hypothesis_id}")
     payload["hypothesis_id"] = hypothesis_id
-    payload["context"] = context
-    for field in _HYPOTHESIS_PASSTHROUGH_FIELDS:
-        if field in context:
-            payload[field] = context[field]
-    payload["summary_markdown"] = context.get("summary_markdown", "")
-    payload["abstract"] = context.get("abstract", {})
-    payload["directions"] = context.get("directions", [])
     return payload
 
 

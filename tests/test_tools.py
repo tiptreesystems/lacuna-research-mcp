@@ -413,7 +413,9 @@ async def test_url_derived_ids_are_unquoted_before_api_path_quoting(
     ]
 
 
-async def test_hypothesis_id_is_quoted_in_both_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_hypothesis_full_view_uses_version_endpoint_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     captured: list[tuple[str, str]] = []
 
     async def fake_api_payload(
@@ -422,21 +424,19 @@ async def test_hypothesis_id_is_quoted_in_both_paths(monkeypatch: pytest.MonkeyP
         captured.append(("payload", path))
         return {"_mcp_meta": {"source": "server_api"}, "versions": []}
 
-    async def fake_api_object(path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        captured.append(("object", path))
-        return {"title": "Hypothesis"}
+    async def fail_api_object(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raise AssertionError(f"full hypothesis view must not fetch context: {path} {params}")
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)
-    monkeypatch.setattr(tools, "api_object", fake_api_object)
+    monkeypatch.setattr(tools, "api_object", fail_api_object)
 
     payload = await tools.get_hypothesis("abc/def?debug=1", view="full")
 
-    assert captured == [
-        ("payload", "/api/v1/hypotheses/abc%2Fdef%3Fdebug%3D1"),
-        ("object", "/api/v1/context/hypothesis/abc%2Fdef%3Fdebug%3D1"),
-    ]
+    assert captured == [("payload", "/api/v1/hypotheses/abc%2Fdef%3Fdebug%3D1")]
     assert payload["_mcp_meta"] == {"source": "server_api"}
-    assert payload["title"] == "Hypothesis"
+    assert payload["hypothesis_id"] == "abc/def?debug=1"
 
 
 async def test_hypothesis_context_view_single_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
