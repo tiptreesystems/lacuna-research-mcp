@@ -14,7 +14,9 @@ _RELATIVE_LACUNA_URL_RE = re.compile(
     r"(?:author|cluster|direction|figures|hypothesis|institution|paper|pdf|venue)"
     r"""/[^\s)"'>]+)"""
 )
-_MARKDOWN_FIELD_NAMES = frozenset({"summary_markdown", "content", "description"})
+_MARKDOWN_FIELD_NAMES = frozenset(
+    {"article_markdown", "content", "description", "markdown", "summary_markdown"}
+)
 
 
 def make_absolute_lacuna_url(

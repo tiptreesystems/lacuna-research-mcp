@@ -30,6 +30,15 @@ def test_markdown_absolutification_applies_only_to_markdown_like_fields() -> Non
     payload = {
         "content": "See /paper/slug/art_1 for details.",
         "description": "Related to /paper/slug/art_3.",
+        "article_markdown": "Direction source: /paper/slug/art_4.",
+        "versions": [
+            {
+                "markdown": (
+                    "Compare /paper/slug/art_5 with "
+                    "https://publisher.example/paper/5."
+                )
+            }
+        ],
         "title": "Token-Level Alignment of Informal Mathematics",
         "abstract": "Plain prose with no Lacuna links.",
         "note": "Path-like /paper/slug/art_2 inside arbitrary field.",
@@ -39,6 +48,13 @@ def test_markdown_absolutification_applies_only_to_markdown_like_fields() -> Non
 
     assert normalized["content"] == f"See {config.DEFAULT_SITE_URL}/paper/slug/art_1 for details."
     assert normalized["description"] == f"Related to {config.DEFAULT_SITE_URL}/paper/slug/art_3."
+    assert normalized["article_markdown"] == (
+        f"Direction source: {config.DEFAULT_SITE_URL}/paper/slug/art_4."
+    )
+    assert normalized["versions"][0]["markdown"] == (
+        f"Compare {config.DEFAULT_SITE_URL}/paper/slug/art_5 with "
+        "https://publisher.example/paper/5."
+    )
     assert normalized["note"] == "Path-like /paper/slug/art_2 inside arbitrary field."
     assert normalized["title"] == "Token-Level Alignment of Informal Mathematics"
     assert normalized["abstract"] == "Plain prose with no Lacuna links."

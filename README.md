@@ -203,7 +203,7 @@ The corpus covers machine learning and AI research: papers, research directions,
 | `get_institution_context(institution_key_or_url, view="context")` | `view="context"` → `GET /api/v1/context/institution/{ikey}?view=compact`; `view="full"` → same route without `view` |
 | `get_institution_authors(institution_key_or_url, limit=50, offset=0)` | `GET /api/v1/institutions/{ikey}/authors` |
 
-For id-or-URL arguments, pass either the raw id returned by `search_lacuna` or the corresponding Lacuna page URL. The MCP normalizes Lacuna-relative `url` and `*_url` fields to absolute URLs, and it also absolutifies Lacuna links inside fields named `summary_markdown`, `content`, or `description`.
+For id-or-URL arguments, pass either the raw id returned by `search_lacuna` or the corresponding Lacuna page URL. The MCP normalizes Lacuna-relative `url` and `*_url` fields to absolute URLs, and it also absolutifies Lacuna links inside fields named `summary_markdown`, `article_markdown`, `markdown`, `content`, or `description`.
 
 `get_author_context` is bounded server-side in both views. The default compact view returns a curated briefing; `view="full"` returns the larger complete shape with embedded collections capped at 100. Use `get_author_papers` and `get_author_directions` rather than trying to page embedded context collections.
 
@@ -269,7 +269,7 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
 - An explicit relevance-sorted paper search with no custom `fields` defaults to the server's production lexical+semantic ranker. Set `ranking_profile="semantic"` for embedding-based retrieval (with a possible exact-title overlay) or `"bm25_title_abstract"` for title-and-abstract lexical matching.
 - Search type aliases are normalized client-side, so `papers`, `directions`, and `hypotheses` are accepted and mapped to the server's singular values.
 - Most detail tools accept either the id returned by search or the corresponding Lacuna URL.
-- Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `content`, or `description` are normalized to absolute URLs.
+- Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `article_markdown`, `markdown`, `content`, or `description` are normalized to absolute URLs.
 - Venue and institution keys are opaque hashes (for example `d7bf22905bd6`), never human-readable names like `icml`. Find the key with `search_lacuna(search_type="venue")` first, or pass a `/venue/...` page URL.
 
 ## Citation
