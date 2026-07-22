@@ -21,7 +21,7 @@ Lacuna Research MCP gives AI researchers' coding agents:
 - **Researcher intelligence.** Trace authors, publications, directions, impact, and related researchers.
 - **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
 
-[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. At the snapshot described in the [Lacuna paper](https://arxiv.org/abs/2606.26246), the map contains 15,259,720 concept elements from 733,795 paper pages, organized into 27,017 research directions.
+[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), extracts concept elements from ML paper pages, clusters them into research directions, and keeps a source trail from every derived object back to the exact paper and page that produced it. The map spans over 15 million concept elements from more than 730,000 paper pages, organized into 27,000+ research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)) — and it grows continuously as new arXiv and other AI papers are ingested.
 
 [Install](#install) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
 
@@ -275,6 +275,36 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
 - Most detail tools accept either the id returned by search or the corresponding Lacuna URL.
 - Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `content`, or `description` are normalized to absolute URLs.
 - Venue and institution keys are opaque hashes (for example `d7bf22905bd6`), never human-readable names like `icml`. Find the key with `search_lacuna(search_type="venue")` first, or pass a `/venue/...` page URL.
+
+## Citation
+
+If you find our work helpful, feel free to cite the papers behind Lacuna's research-proposal generation and research map.
+
+**Research-proposal generation — Alien Science**
+
+```bibtex
+@inproceedings{artiles2026alien,
+  title     = {Alien Science: Sampling Coherent but Cognitively Unavailable Research Directions from Idea Atoms},
+  author    = {Artiles, Alejandro H. and Weiss, Martin and Brinkmann, Levin and Goyal, Anirudh and Rahaman, Nasim},
+  booktitle = {ICLR 2026 Workshop on Post-AGI Science and Society},
+  year      = {2026},
+  url       = {https://openreview.net/forum?id=XZWkDET1ia}
+}
+```
+
+**Research map — Lacuna**
+
+```bibtex
+@misc{weiss2026lacunaresearchmapmachine,
+  title         = {Lacuna: A Research Map for Machine Learning},
+  author        = {Martin Weiss and Miles Q. Li and Alejandro H. Artiles and Yacine Mkhinini and Chris Pal and Hugo Larochelle and Nasim Rahaman},
+  year          = {2026},
+  eprint        = {2606.26246},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.DL},
+  url           = {https://arxiv.org/abs/2606.26246}
+}
+```
 
 ## License
 
