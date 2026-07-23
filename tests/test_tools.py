@@ -384,9 +384,7 @@ async def test_hypothesis_full_view_uses_version_endpoint_only(
         captured.append(("payload", path))
         return {"versions": []}
 
-    async def fail_api_object(
-        path: str, *, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    async def fail_api_object(path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
         raise AssertionError(f"full hypothesis view must not fetch context: {path} {params}")
 
     monkeypatch.setattr(tools, "api_payload", fake_api_payload)

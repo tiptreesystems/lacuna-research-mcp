@@ -32,12 +32,7 @@ def test_markdown_absolutification_applies_only_to_markdown_like_fields() -> Non
         "description": "Related to /paper/slug/art_3.",
         "article_markdown": "Direction source: /paper/slug/art_4.",
         "versions": [
-            {
-                "markdown": (
-                    "Compare /paper/slug/art_5 with "
-                    "https://publisher.example/paper/5."
-                )
-            }
+            {"markdown": ("Compare /paper/slug/art_5 with https://publisher.example/paper/5.")}
         ],
         "title": "Token-Level Alignment of Informal Mathematics",
         "abstract": "Plain prose with no Lacuna links.",
