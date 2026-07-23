@@ -31,16 +31,16 @@ Lacuna Research MCP gives AI researchers' coding agents:
 
 The easiest way to install Lacuna Research MCP is to ask your coding agent, such as Codex or Claude Code:
 
-> Install and configure the Lacuna Research MCP from https://github.com/tiptreesystems/lacuna-research-mcp for this client.
+> Install and configure the `lacuna-research-mcp` package from PyPI for this client.
 
-For manual setup, the instructions below use [`uvx`](https://docs.astral.sh/uv/guides/tools/) to run the server directly from GitHub. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first; Lacuna Research MCP requires Python 3.11 or newer.
+For manual setup, the instructions below use [`uvx`](https://docs.astral.sh/uv/guides/tools/) to run the latest tagged release from PyPI. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first; Lacuna Research MCP requires Python 3.11 or newer.
 
 ### Codex
 
 Add the server with the Codex CLI:
 
 ```bash
-codex mcp add lacuna-research -- uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
+codex mcp add lacuna-research -- uvx lacuna-research-mcp
 ```
 
 Alternatively, add the following to `~/.codex/config.toml` (or to `.codex/config.toml` in a trusted project for project-only setup):
@@ -48,7 +48,7 @@ Alternatively, add the following to `~/.codex/config.toml` (or to `.codex/config
 ```toml
 [mcp_servers.lacuna-research]
 command = "uvx"
-args = ["--from", "git+https://github.com/tiptreesystems/lacuna-research-mcp.git", "lacuna-research-mcp"]
+args = ["lacuna-research-mcp"]
 ```
 
 Run `codex mcp list` to verify the server is configured. The Codex app, CLI, and IDE extension share this configuration on the same machine.
@@ -58,7 +58,7 @@ Run `codex mcp list` to verify the server is configured. The Codex app, CLI, and
 Add the server for all of your projects with the Claude Code CLI:
 
 ```bash
-claude mcp add --scope user lacuna-research -- uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp
+claude mcp add --scope user lacuna-research -- uvx lacuna-research-mcp
 ```
 
 Omit `--scope user` to add it only to the current project. Alternatively, add the following under the top-level `mcpServers` object in `~/.claude.json`:
@@ -69,11 +69,7 @@ Omit `--scope user` to add it only to the current project. Alternatively, add th
     "lacuna-research": {
       "type": "stdio",
       "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
-        "lacuna-research-mcp"
-      ]
+      "args": ["lacuna-research-mcp"]
     }
   }
 }
@@ -90,11 +86,7 @@ Open **Settings → Developer → Edit Config**, then add the server under `mcpS
   "mcpServers": {
     "lacuna-research": {
       "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
-        "lacuna-research-mcp"
-      ]
+      "args": ["lacuna-research-mcp"]
     }
   }
 }
@@ -111,11 +103,7 @@ For any client that supports local stdio MCP servers, use this standard configur
   "mcpServers": {
     "lacuna-research": {
       "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/tiptreesystems/lacuna-research-mcp.git",
-        "lacuna-research-mcp"
-      ]
+      "args": ["lacuna-research-mcp"]
     }
   }
 }
@@ -126,11 +114,19 @@ For any client that supports local stdio MCP servers, use this standard configur
 Install the MCP server as a persistent command:
 
 ```bash
-uv tool install git+https://github.com/tiptreesystems/lacuna-research-mcp.git
+uv tool install lacuna-research-mcp
 lacuna-research-mcp
 ```
 
 Run it without installing a persistent command:
+
+```bash
+uvx lacuna-research-mcp
+```
+
+### Latest development version
+
+PyPI contains tagged releases. To try the latest code from the `main` branch instead:
 
 ```bash
 uvx --from git+https://github.com/tiptreesystems/lacuna-research-mcp.git lacuna-research-mcp

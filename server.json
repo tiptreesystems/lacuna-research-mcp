@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.tiptreesystems/lacuna-research-mcp",
+  "title": "Lacuna Research MCP",
+  "description": "Search Lacuna's ML research graph for papers, directions, authors, venues, and hypotheses.",
+  "version": "0.1.1",
+  "websiteUrl": "https://github.com/tiptreesystems/lacuna-research-mcp",
+  "repository": {
+    "url": "https://github.com/tiptreesystems/lacuna-research-mcp",
+    "source": "github",
+    "id": "1306004280"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "lacuna-research-mcp",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

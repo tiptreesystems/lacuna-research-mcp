@@ -1,6 +1,6 @@
 [project]
 name = "lacuna-research-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server for Lacuna, a research map for machine learning: search directions, papers, authors, venues, and AI-generated research proposals."
 readme = "README.md"
 license = "MIT"
