@@ -11,11 +11,18 @@ logger = logging.getLogger(__name__)
 _RELATIVE_LACUNA_URL_RE = re.compile(
     r"(?<!\w)"
     r"(/"
-    r"(?:author|cluster|direction|figures|hypothesis|institution|paper|pdf|venue)"
+    r"(?:author|cluster|direction|figures|hypothesis|institution|node|paper|pdf|venue)"
     r"""/[^\s)"'>]+)"""
 )
 _MARKDOWN_FIELD_NAMES = frozenset(
-    {"article_markdown", "content", "description", "markdown", "summary_markdown"}
+    {
+        "article_markdown",
+        "content",
+        "description",
+        "markdown",
+        "profile_markdown",
+        "summary_markdown",
+    }
 )
 
 

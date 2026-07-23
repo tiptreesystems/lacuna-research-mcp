@@ -55,6 +55,22 @@ def test_markdown_absolutification_applies_only_to_markdown_like_fields() -> Non
     assert normalized["abstract"] == "Plain prose with no Lacuna links."
 
 
+def test_profile_markdown_absolutifies_paper_and_node_links() -> None:
+    payload = {
+        "profile_markdown": (
+            "See [the paper](/paper/art_1) and "
+            "[the research direction](/node/cluster/32599)."
+        )
+    }
+
+    normalized = normalize.normalize_url_fields(payload)
+
+    assert normalized["profile_markdown"] == (
+        f"See [the paper]({config.DEFAULT_SITE_URL}/paper/art_1) and "
+        f"[the research direction]({config.DEFAULT_SITE_URL}/node/cluster/32599)."
+    )
+
+
 def test_url_normalization_preserves_safe_absolute_urls_and_unsafe_strings() -> None:
     assert normalize.make_absolute_lacuna_url("/paper/slug/art_1") == (
         f"{config.DEFAULT_SITE_URL}/paper/slug/art_1"
