@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.tiptreesystems/lacuna-research-mcp -->
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/tiptreesystems/lacuna-research-mcp/main/assets/banner.svg" alt="Lacuna Research MCP — Empower your coding agent for machine learning research" width="100%" />
 </p>
