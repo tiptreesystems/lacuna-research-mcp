@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Lacuna Research MCP — Empower your coding agent for machine learning research" width="100%" />
+  <img src="https://raw.githubusercontent.com/tiptreesystems/lacuna-research-mcp/main/assets/banner.svg" alt="Lacuna Research MCP — Empower your coding agent for machine learning research" width="100%" />
 </p>
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.11+" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-server-7C3AED" alt="MCP server" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" /></a>
+  <a href="https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" /></a>
 </p>
 
 # Lacuna Research MCP
@@ -304,4 +304,4 @@ If you find our work helpful, feel free to cite the papers behind Lacuna's resea
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/LICENSE).
