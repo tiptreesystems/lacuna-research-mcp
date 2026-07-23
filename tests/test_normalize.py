@@ -58,8 +58,7 @@ def test_markdown_absolutification_applies_only_to_markdown_like_fields() -> Non
 def test_profile_markdown_absolutifies_paper_and_node_links() -> None:
     payload = {
         "profile_markdown": (
-            "See [the paper](/paper/art_1) and "
-            "[the research direction](/node/cluster/32599)."
+            "See [the paper](/paper/art_1) and [the research direction](/node/cluster/32599)."
         )
     }
 
