@@ -3,7 +3,7 @@
   "name": "io.github.tiptreesystems/lacuna-research-mcp",
   "title": "Lacuna Research MCP",
   "description": "Search Lacuna's ML research graph for papers, directions, authors, venues, and hypotheses.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "websiteUrl": "https://github.com/tiptreesystems/lacuna-research-mcp",
   "repository": {
     "url": "https://github.com/tiptreesystems/lacuna-research-mcp",
@@ -14,7 +14,7 @@
     {
       "registryType": "pypi",
       "identifier": "lacuna-research-mcp",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "transport": {
         "type": "stdio"
       }

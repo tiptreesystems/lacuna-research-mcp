@@ -235,65 +235,31 @@ async def search_lacuna(
     ranking_profile: str | None = None,
     fields: str | None = None,
 ) -> dict[str, Any]:
-    """Search Lacuna's server-side API.
+    """Search Lacuna's ML/AI corpus for papers, research directions, authors,
+    venues, institutions, and novel research hypotheses.
 
-    Valid search_type values:
-    - all
-    - cluster, clusters, direction, directions
-    - paper, papers
-    - author, authors
-    - institution, institutions
-    - venue, venues
-    - hypothesis, hypotheses, proposal, proposals
+    For novel ML/AI research ideas, use search_type="hypothesis", then
+    get_hypothesis on promising results.
 
-    The client normalizes aliases to the singular server-side type.
+    search_type accepts all, cluster/direction, paper, author, institution,
+    venue, or hypothesis/proposal; singular and plural aliases are accepted.
+    Use other sources for biographies, news, and non-research web content.
 
-    The corpus covers machine learning and AI research: papers, research
-    directions, authors' research output, venues, institutions, and generated
-    hypotheses. It does not contain biographies, news, or non-research web
-    content; answer questions outside that scope from other sources rather than
-    guessing from these results.
+    ranking_profile accepts:
+    - default / lexical (default): production ranking; relevance-sorted paper
+      searches combine lexical and semantic retrieval when fields is unset.
+    - semantic: conceptual paper retrieval; supported for paper and all.
+    - bm25_title_abstract / bm25: lexical paper matching over those fields.
 
-    ranking_profile controls server-side ranking:
-    - default / lexical (default): use the server's default ranker. With
-      search_type="paper", sort="relevance", and fields unset, it combines lexical
-      and semantic retrieval with graceful fallback.
-    - semantic: use embedding-based paper retrieval for conceptual queries. The
-      normal lexical ranking leg is omitted, but exact-title matches may still
-      be overlaid by the server.
-    - bm25_title_abstract: use when you want lexical matching constrained to
-      title and abstract fields.
+    sort accepts relevance (default), year_desc, or year_asc. Semantic ranking
+    cannot use year sorting; constrain recency with date_from/date_to instead.
+    date_from and date_to are inclusive YYYY, YYYY-MM, or YYYY-MM-DD bounds.
 
-    All searches default to the server's production ranking profile. The combined
-    lexical+semantic ranker is selected only for relevance-sorted paper searches
-    with fields unset; search_type defaults to all. semantic is only supported for
-    paper and all searches (only papers have semantic embeddings);
-    bm25_title_abstract is rejected for author and institution searches (those
-    records have no title or abstract fields). Unsupported combinations raise an
-    error because the server would otherwise fall back to substring search and
-    silently ignore the requested ranking profile.
-    sort orders results: relevance (default), year_desc, or year_asc. Year
-    sorts cannot be combined with ranking_profile="semantic" (the server would
-    silently ignore the sort); for recent-and-relevant queries, keep semantic
-    ranking and constrain recency with date_from/date_to instead.
-    date_from and date_to are inclusive publication-date bounds. Accepted
-    formats are YYYY, YYYY-MM, and YYYY-MM-DD.
-    fields restricts and weights the text fields used for lexical ranking
-    (comma-separated, optional ^weights, e.g. "title^4,abstract"). It does not
-    change the response shape. Valid field names are title, abstract, summary,
-    concepts, name, top_names, and venue; each field only exists on some
-    document types, so a field must be compatible with search_type: title on
-    paper/cluster/venue/hypothesis; abstract, summary, concepts on paper; name
-    on author/institution/venue; top_names on cluster/hypothesis; venue on
-    paper/venue (search_type="all" spans every type). Weights must be finite
-    numbers with 0 < weight <= 100. Unknown names, malformed or out-of-range
-    weights, and fields absent from the requested type are rejected locally
-    because the server would otherwise silently drop, cap, or ignore them.
-    fields cannot be combined with ranking_profile="semantic" (the server
-    would return embedding-based results and silently ignore fields). Setting
-    fields selects the experimental lexical ranker; for a default
-    relevance-sorted paper search, it also bypasses the lexical+semantic
-    ranker. Leave unset unless you specifically want that.
+    fields optionally restricts and weights lexical fields, for example
+    "title^4,abstract". Supported names are title, abstract, summary, concepts,
+    name, top_names, and venue. Fields must exist on the selected search_type,
+    weights must be within 0 < weight <= 100, and fields cannot be combined
+    with semantic ranking.
     """
     normalized_type = _normalize_search_type(search_type)
     normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, normalized_type)
@@ -352,7 +318,11 @@ async def get_hypothesis(
     hypothesis_id_or_url: str,
     view: HypothesisView = "context",
 ) -> dict[str, Any]:
-    """Fetch a hypothesis from Lacuna's server-side API.
+    """Fetch a generated novel ML/AI research proposal from Lacuna.
+
+    Use after search_lacuna(search_type="hypothesis") to inspect a proposal.
+    When a proposal informs your answer, cite its Lacuna URL so the user can
+    read the full text.
 
     view selects the response shape:
 

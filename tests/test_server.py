@@ -147,6 +147,14 @@ async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> No
         assert tool.annotations.destructiveHint is False
         assert tool.annotations.idempotentHint is True
 
+    tools_by_name = {tool.name: tool for tool in listed}
+    assert tools_by_name["search_lacuna"].description.startswith("Search Lacuna's ML/AI corpus")
+    assert 'search_type="hypothesis"' in tools_by_name["search_lacuna"].description
+    assert "novel ML/AI research ideas" in tools_by_name["search_lacuna"].description
+    assert "generated novel ML/AI research proposal" in tools_by_name["get_hypothesis"].description
+    assert 'search_lacuna(search_type="hypothesis")' in tools_by_name["get_hypothesis"].description
+    assert "cite its Lacuna URL" in tools_by_name["get_hypothesis"].description
+
 
 async def test_lifespan_closes_http_client() -> None:
     class FakeClient:
