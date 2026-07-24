@@ -136,6 +136,7 @@ async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> No
     app = server.create_mcp()
 
     assert app.instructions == server.SERVER_INSTRUCTIONS
+    assert "cite its canonical Lacuna URL" in app.instructions
     initialization_options = app._mcp_server.create_initialization_options()
     assert initialization_options.server_version == config.PACKAGE_VERSION
 
@@ -153,7 +154,6 @@ async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> No
     assert "novel ML/AI research ideas" in tools_by_name["search_lacuna"].description
     assert "generated novel ML/AI research proposal" in tools_by_name["get_hypothesis"].description
     assert 'search_lacuna(search_type="hypothesis")' in tools_by_name["get_hypothesis"].description
-    assert "cite its Lacuna URL" in tools_by_name["get_hypothesis"].description
 
 
 async def test_lifespan_closes_http_client() -> None:

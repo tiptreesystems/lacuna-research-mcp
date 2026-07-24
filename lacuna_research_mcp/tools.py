@@ -321,8 +321,6 @@ async def get_hypothesis(
     """Fetch a generated novel ML/AI research proposal from Lacuna.
 
     Use after search_lacuna(search_type="hypothesis") to inspect a proposal.
-    When a proposal informs your answer, cite its Lacuna URL so the user can
-    read the full text.
 
     view selects the response shape:
 
