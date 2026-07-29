@@ -247,7 +247,7 @@ Environment variables are read once when the MCP server is created, or on the fi
 The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is split by responsibility:
 
 - `lacuna_research_mcp/server.py`
-  FastMCP app creation, tool registration, lifespan cleanup, and the `lacuna-research-mcp` CLI entrypoint.
+  MCPServer app creation, tool registration, lifespan cleanup, and the `lacuna-research-mcp` CLI entrypoint.
 - `lacuna_research_mcp/tools.py`
   MCP tool functions. Each tool normalizes its inputs, calls the matching Lacuna API endpoint through the shared client helpers, and returns JSON-compatible data.
 - `lacuna_research_mcp/client.py`

@@ -31,15 +31,15 @@ SERVER_INSTRUCTIONS = (
 )
 
 
-def _load_fast_mcp() -> Any:
+def _load_mcp_server() -> Any:
     # Deferred so main() can turn a missing optional MCP dependency into a clear CLI error.
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
-    return FastMCP
+    return MCPServer
 
 
 def _read_only_tool_annotations() -> Any:
-    # Deferred import mirrors _load_fast_mcp so a missing mcp dependency still
+    # Deferred import mirrors _load_mcp_server so a missing mcp dependency still
     # surfaces as a clear CLI error rather than an import failure at module load.
     from mcp.types import ToolAnnotations
 
@@ -54,15 +54,6 @@ def _read_only_tool_annotations() -> Any:
     )
 
 
-def _set_server_version(app: Any) -> None:
-    # FastMCP 1.x does not expose an application-version constructor argument.
-    # Its low-level server otherwise falls back to the MCP SDK package version
-    # in the initialize handshake.
-    low_level_server = getattr(app, "_mcp_server", None)
-    if low_level_server is not None:
-        low_level_server.version = PACKAGE_VERSION
-
-
 @asynccontextmanager
 async def _lifespan(_server: Any) -> AsyncIterator[None]:
     try:
@@ -74,14 +65,14 @@ async def _lifespan(_server: Any) -> AsyncIterator[None]:
 def create_mcp() -> Any:
     configure_runtime_from_env()
     log_level = log_level_from_env()
-    fast_mcp = _load_fast_mcp()
-    app = fast_mcp(
+    mcp_server = _load_mcp_server()
+    app = mcp_server(
         "lacuna-research-search",
         instructions=SERVER_INSTRUCTIONS,
+        version=PACKAGE_VERSION,
         lifespan=_lifespan,
         log_level=log_level,
     )
-    _set_server_version(app)
     annotations = _read_only_tool_annotations()
     for tool_func in TOOL_FUNCTIONS:
         app.tool(annotations=annotations)(tool_func)

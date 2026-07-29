@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from mcp import Client
 
 from lacuna_research_mcp import client, config, server, tools
 
@@ -48,11 +49,13 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
             name: str,
             *,
             instructions: str | None = None,
+            version: str = "",
             lifespan: Any = None,
             log_level: str | None = None,
         ) -> None:
             self.name = name
             self.instructions = instructions
+            self.version = version
             self.lifespan = lifespan
             self.log_level = log_level
             self.tools: list[Any] = []
@@ -70,7 +73,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     sentinel_loop = object()
     client.RUNTIME._client = sentinel_client
     client.RUNTIME._client_loop = sentinel_loop
-    monkeypatch.setattr(server, "_load_fast_mcp", lambda: FakeMCP)
+    monkeypatch.setattr(server, "_load_mcp_server", lambda: FakeMCP)
     monkeypatch.delenv("LACUNA_MCP_LOG_LEVEL", raising=False)
     monkeypatch.setenv("LACUNA_SITE_URL", "https://lacuna.example/")
     monkeypatch.setenv("LACUNA_MCP_TIMEOUT", "3.5")
@@ -82,6 +85,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
 
     assert fake_mcp.name == "lacuna-research-search"
     assert fake_mcp.instructions is server.SERVER_INSTRUCTIONS
+    assert fake_mcp.version == config.PACKAGE_VERSION
     assert "expanded conference names may not be indexed" in fake_mcp.instructions
     assert fake_mcp.lifespan is server._lifespan
     # Default to WARNING so httpx's INFO request-URL logs (with the query
@@ -116,6 +120,7 @@ def test_create_mcp_log_level_env_override(monkeypatch: pytest.MonkeyPatch) -> N
             name: str,
             *,
             instructions: str | None = None,
+            version: str = "",
             lifespan: Any = None,
             log_level: str | None = None,
         ) -> None:
@@ -124,29 +129,35 @@ def test_create_mcp_log_level_env_override(monkeypatch: pytest.MonkeyPatch) -> N
         def tool(self, *, annotations: Any = None) -> Any:
             return lambda func: func
 
-    monkeypatch.setattr(server, "_load_fast_mcp", lambda: FakeMCP)
+    monkeypatch.setattr(server, "_load_mcp_server", lambda: FakeMCP)
     monkeypatch.setenv("LACUNA_MCP_LOG_LEVEL", "debug")
 
     assert server.create_mcp().log_level == "DEBUG"
 
 
 async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> None:
-    # Build the real FastMCP app (no fake) to verify the discovery/safety
+    # Build the real MCPServer app (no fake) to verify the discovery/safety
     # metadata reaches the wire format MCP clients actually read.
     app = server.create_mcp()
 
     assert app.instructions == server.SERVER_INSTRUCTIONS
     assert "cite its canonical Lacuna URL" in app.instructions
-    initialization_options = app._mcp_server.create_initialization_options()
-    assert initialization_options.server_version == config.PACKAGE_VERSION
+    assert app.version == config.PACKAGE_VERSION
+
+    async with Client(app) as mcp_client:
+        assert mcp_client.protocol_version == "2026-07-28"
+        assert mcp_client.server_info is not None
+        assert mcp_client.server_info.name == "lacuna-research-search"
+        assert mcp_client.server_info.version == config.PACKAGE_VERSION
+        assert mcp_client.instructions == server.SERVER_INSTRUCTIONS
 
     listed = await app.list_tools()
     assert len(listed) == len(tools.TOOL_FUNCTIONS)
     for tool in listed:
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.destructiveHint is False
-        assert tool.annotations.idempotentHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.destructive_hint is False
+        assert tool.annotations.idempotent_hint is True
 
     tools_by_name = {tool.name: tool for tool in listed}
     assert tools_by_name["search_lacuna"].description.startswith("Search Lacuna's ML/AI corpus")
