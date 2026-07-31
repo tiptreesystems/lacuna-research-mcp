@@ -42,3 +42,21 @@ def test_url_like_ids_must_match_expected_routes() -> None:
         ids.extract_route_key("/institutions/abc", "institution")
     with pytest.raises(ValueError, match="Invalid venue key/year or URL"):
         ids.extract_venue_key_year(f"{config.DEFAULT_SITE_URL}/venues/abc")
+
+
+def test_route_keys_ignore_author_and_institution_page_suffixes() -> None:
+    assert (
+        ids.extract_route_key(
+            f"{config.DEFAULT_SITE_URL}/author/yoshua-bengio/aut_93a4/md",
+            "author",
+        )
+        == "aut_93a4"
+    )
+    assert (
+        ids.extract_route_key(
+            "/author/yoshua-bengio/aut_93a4/papers.html",
+            "author",
+        )
+        == "aut_93a4"
+    )
+    assert ids.extract_route_key("/institution/7d42/md", "institution") == "7d42"

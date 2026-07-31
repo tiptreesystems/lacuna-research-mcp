@@ -266,6 +266,46 @@ async def test_search_passes_inclusive_date_bounds(monkeypatch: pytest.MonkeyPat
     assert "year_to" not in captured_params
 
 
+async def test_search_passes_author_constraint(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured_params: dict[str, Any] = {}
+
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        assert path == "/api/v1/search"
+        assert params is not None
+        captured_params.update(params)
+        return {}
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    await tools.search_lacuna(
+        "representation learning",
+        search_type="papers",
+        author_id_or_url="/author/yoshua-bengio/aut_93a4/papers.html",
+    )
+
+    assert captured_params["author_id"] == "aut_93a4"
+
+
+async def test_search_rejects_author_constraint_for_non_papers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        raise AssertionError("api_payload should not be called")
+
+    monkeypatch.setattr(tools, "api_payload", fail_api_payload)
+
+    with pytest.raises(ValueError, match="requires search_type='paper'"):
+        await tools.search_lacuna(
+            "representation learning",
+            search_type="all",
+            author_id_or_url="aut_93a4",
+        )
+
+
 async def test_detail_ids_are_quoted_in_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: list[str] = []
     captured_params: list[dict[str, Any] | None] = []

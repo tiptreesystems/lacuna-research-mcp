@@ -67,7 +67,23 @@ def extract_route_key(value: str, route_name: str) -> str:
     value = value.strip()
     match = re.search(rf"/{re.escape(route_name)}/([^?#]+)", value)
     if match:
-        return unquote(match.group(1).rstrip("/").split("/")[-1])
+        parts = [unquote(part) for part in match.group(1).strip("/").split("/") if part]
+        if route_name == "author":
+            for part in reversed(parts):
+                if part.startswith("aut_"):
+                    return part
+            non_suffix_parts = [
+                part
+                for part in parts
+                if part not in {"md", "papers.html", "impact.html", "neighbors.html"}
+            ]
+            if non_suffix_parts:
+                return non_suffix_parts[1] if len(non_suffix_parts) > 1 else non_suffix_parts[0]
+        elif route_name == "institution" and parts:
+            return parts[0]
+        elif parts:
+            return parts[-1]
+        raise ValueError(f"Invalid {route_name} key or URL: {value!r}")
     if _looks_like_url_or_path(value):
         raise ValueError(f"Invalid {route_name} key or URL: {value!r}")
     return value

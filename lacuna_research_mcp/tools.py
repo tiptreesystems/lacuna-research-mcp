@@ -228,6 +228,7 @@ async def search_lacuna(
     search_type: str = "all",
     limit: int = 10,
     offset: int = 0,
+    author_id_or_url: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
     venue: str | None = None,
@@ -254,6 +255,8 @@ async def search_lacuna(
     sort accepts relevance (default), year_desc, or year_asc. Semantic ranking
     cannot use year sorting; constrain recency with date_from/date_to instead.
     date_from and date_to are inclusive YYYY, YYYY-MM, or YYYY-MM-DD bounds.
+    author_id_or_url constrains a paper search to one author. Pass an author ID
+    or Lacuna author page URL; it requires search_type="paper".
 
     fields optionally restricts and weights lexical fields, for example
     "title^4,abstract". Supported names are title, abstract, summary, concepts,
@@ -262,6 +265,8 @@ async def search_lacuna(
     with semantic ranking.
     """
     normalized_type = _normalize_search_type(search_type)
+    if author_id_or_url is not None and normalized_type != "paper":
+        raise ValueError("author_id_or_url requires search_type='paper'")
     normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, normalized_type)
     normalized_sort = _normalize_sort(sort)
     normalized_fields = _normalize_fields(fields, normalized_type)
@@ -293,6 +298,8 @@ async def search_lacuna(
         params["date_to"] = date_to
     if venue:
         params["venue"] = venue
+    if author_id_or_url is not None:
+        params["author_id"] = extract_route_key(author_id_or_url, "author")
     if normalized_fields is not None:
         params["fields"] = normalized_fields
 
