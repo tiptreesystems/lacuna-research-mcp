@@ -329,7 +329,11 @@ async def test_detail_ids_are_quoted_in_paths(monkeypatch: pytest.MonkeyPatch) -
         "/api/v1/context/institution/inst_ok%2Fextra%3Fdebug%3D1",
     ]
     # venue/institution context now default to the compact server view.
-    assert captured_params == [{"view": "compact"}, {"view": "compact"}, {"view": "compact"}]
+    assert captured_params == [
+        {"view": "compact", "include_resources": True},
+        {"view": "compact"},
+        {"view": "compact"},
+    ]
 
 
 async def test_paper_views_map_to_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -357,7 +361,15 @@ async def test_paper_views_map_to_endpoints(monkeypatch: pytest.MonkeyPatch) -> 
         "/api/v1/papers/art_ok%2Fextra%3Fdebug%3D1/concepts",
         "/api/v1/papers/art_ok%2Fextra%3Fdebug%3D1/neighbors",
     ]
-    assert captured_params == [{"view": "compact"}, None, None, None, None, None, None]
+    assert captured_params == [
+        {"view": "compact", "include_resources": True},
+        {"include_resources": True},
+        None,
+        None,
+        None,
+        None,
+        None,
+    ]
     assert all(payload["artifact_id"] == "art_ok/extra?debug=1" for payload in payloads)
 
 
@@ -490,8 +502,8 @@ async def test_paper_context_figure_limit_passthrough(monkeypatch: pytest.Monkey
     await tools.get_paper("art_ok", figure_limit=0)
     await tools.get_paper("art_ok")
 
-    assert captured[0] == {"view": "compact", "figure_limit": 0}
-    assert captured[1] == {"view": "compact"}
+    assert captured[0] == {"view": "compact", "figure_limit": 0, "include_resources": True}
+    assert captured[1] == {"view": "compact", "include_resources": True}
 
 
 async def test_paper_context_rejects_negative_figure_limit() -> None:

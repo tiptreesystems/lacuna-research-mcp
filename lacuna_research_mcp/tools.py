@@ -442,9 +442,7 @@ async def get_work(
         if figure_limit < 0:
             raise ValueError("figure_limit must be greater than or equal to 0")
         params["figure_limit"] = figure_limit
-    return await api_payload(
-        f"/api/v1/context/work/{path_segment(work_id)}", params=params
-    )
+    return await api_payload(f"/api/v1/context/work/{path_segment(work_id)}", params=params)
 
 
 async def get_paper(
