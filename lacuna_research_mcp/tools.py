@@ -30,6 +30,8 @@ _SEARCH_TYPE_ALIASES = {
     "directions": "cluster",
     "paper": "paper",
     "papers": "paper",
+    "work": "work",
+    "works": "work",
     "author": "author",
     "authors": "author",
     "institution": "institution",
@@ -76,13 +78,13 @@ _SEARCH_SORTS = frozenset({"relevance", "year_desc", "year_asc"})
 # these are validated here instead so the caller gets an error rather than a
 # silently degraded ranking.
 _SEARCH_FIELD_TYPES: dict[str, frozenset[str]] = {
-    "title": frozenset({"paper", "cluster", "venue", "hypothesis"}),
-    "abstract": frozenset({"paper"}),
-    "summary": frozenset({"paper"}),
-    "concepts": frozenset({"paper"}),
+    "title": frozenset({"paper", "work", "cluster", "venue", "hypothesis"}),
+    "abstract": frozenset({"paper", "work"}),
+    "summary": frozenset({"paper", "work"}),
+    "concepts": frozenset({"paper", "work"}),
     "name": frozenset({"author", "institution", "venue"}),
     "top_names": frozenset({"cluster", "hypothesis"}),
-    "venue": frozenset({"paper", "venue"}),
+    "venue": frozenset({"paper", "work", "venue"}),
 }
 _SEARCH_FIELDS = frozenset(_SEARCH_FIELD_TYPES)
 _SEARCH_FIELD_MAX_WEIGHT = 100.0
@@ -236,20 +238,22 @@ async def search_lacuna(
     ranking_profile: str | None = None,
     fields: str | None = None,
 ) -> dict[str, Any]:
-    """Search Lacuna's ML/AI corpus for papers, research directions, authors,
+    """Search Lacuna's ML/AI corpus for Works, papers, research directions, authors,
     venues, institutions, and novel research hypotheses.
 
     For novel ML/AI research ideas, use search_type="hypothesis", then
     get_hypothesis on promising results.
 
-    search_type accepts all, cluster/direction, paper, author, institution,
+    search_type accepts all, cluster/direction, work, paper, author, institution,
     venue, or hypothesis/proposal; singular and plural aliases are accepted.
+    Use work for research grouped across versions, then get_work for details.
+    Paper searches can also return Work results.
     Use other sources for biographies, news, and non-research web content.
 
     ranking_profile accepts:
     - default / lexical (default): production ranking; relevance-sorted paper
       searches combine lexical and semantic retrieval when fields is unset.
-    - semantic: conceptual paper retrieval; supported for paper and all.
+    - semantic: conceptual paper retrieval; supported for work, paper, and all.
     - bm25_title_abstract / bm25: lexical paper matching over those fields.
 
     sort accepts relevance (default), year_desc, or year_asc. Semantic ranking
@@ -407,12 +411,54 @@ async def get_direction_papers(
     return payload
 
 
+async def get_work(
+    work_id_or_url: str,
+    view: ContextView = "context",
+    figure_limit: int | None = None,
+    include_resources: bool = True,
+) -> dict[str, Any]:
+    """Fetch a Lacuna Work by Work ID or URL returned by search.
+
+    A Work groups versions of the same research. Content comes from its selected
+    version; versions lists the available papers and their artifact IDs.
+    Use get_paper with a version's artifact_id to inspect that paper.
+    include_resources adds public code repositories across all versions by
+    default. Pass False to omit them.
+
+    view="context" returns compact context with a summary, authors, figure
+    preview, and versions. view="full" also includes concepts, related papers,
+    all figures, and the selected paper record.
+
+    figure_limit (context view only) caps the figure preview (server default 3).
+    Pass 0 to suppress figure previews while keeping a figures_truncated signal.
+    """
+    normalized_view = _normalize_view(view, _CONTEXT_VIEW_ROUTES)
+    work_id = extract_route_key(work_id_or_url, "work")
+    params: dict[str, Any] = {
+        "view": _CONTEXT_VIEW_ROUTES[normalized_view],
+        "include_resources": include_resources,
+    }
+    if normalized_view == "context" and figure_limit is not None:
+        if figure_limit < 0:
+            raise ValueError("figure_limit must be greater than or equal to 0")
+        params["figure_limit"] = figure_limit
+    return await api_payload(
+        f"/api/v1/context/work/{path_segment(work_id)}", params=params
+    )
+
+
 async def get_paper(
     artifact_id_or_url: str,
     view: PaperView = "context",
     figure_limit: int | None = None,
+    include_resources: bool = True,
 ) -> dict[str, Any]:
     """Fetch a Lacuna paper by artifact id or paper URL.
+
+    For a Work search result, use get_work first; pass a version's artifact_id
+    here to read that specific paper.
+    include_resources adds public code repositories in context and full views
+    by default. Pass False to omit them; other views ignore this option.
 
     view selects the response shape. `context` requests Lacuna's compact
     agent-oriented context by default, while the four single-field views
@@ -437,8 +483,10 @@ async def get_paper(
     normalized_view = _normalize_view(view, _PAPER_VIEW_ROUTES)
     route_template = _PAPER_VIEW_ROUTES[normalized_view]
     params: dict[str, Any] | None = None
+    if normalized_view in {"context", "full"}:
+        params = {"include_resources": include_resources}
     if normalized_view == "context":
-        params = {"view": "compact"}
+        params["view"] = "compact"
         if figure_limit is not None:
             if figure_limit < 0:
                 raise ValueError("figure_limit must be greater than or equal to 0")
@@ -623,6 +671,7 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_hypothesis,
     get_direction,
     get_direction_papers,
+    get_work,
     get_paper,
     get_author_papers,
     get_author_directions,

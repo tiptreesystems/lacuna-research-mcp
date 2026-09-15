@@ -79,6 +79,10 @@ def extract_route_key(value: str, route_name: str) -> str:
             ]
             if non_suffix_parts:
                 return non_suffix_parts[1] if len(non_suffix_parts) > 1 else non_suffix_parts[0]
+        elif route_name == "work":
+            for part in parts:
+                if part.startswith("wrk_"):
+                    return part
         elif route_name == "institution" and parts:
             return parts[0]
         elif parts:
