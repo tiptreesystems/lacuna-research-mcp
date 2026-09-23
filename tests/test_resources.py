@@ -4,22 +4,33 @@ from mcp import Client
 from lacuna_research_mcp import server, tools
 
 
-@pytest.mark.parametrize("tool,identifier", [("get_work", "wrk_test"), ("get_paper", "art_test")])
 @pytest.mark.parametrize("view", ["context", "full"])
 @pytest.mark.parametrize("include", [None, True, False])
-async def test_resources_forwarding(monkeypatch, tool, identifier, view, include):
+async def test_resources_forwarding(monkeypatch, view, include):
     calls = []
 
     async def api_payload(path, *, params):
         calls.append((path, params))
-        return {"resources": [{"url": "https://github.com/example/code"}]}
+        payload = {"id": "art_test", "title": "Paper record"}
+        if params["include_resources"]:
+            payload["resources"] = [{"url": "https://github.com/example/code"}]
+        return payload
 
     monkeypatch.setattr(tools, "api_payload", api_payload)
     kwargs = {} if include is None else {"include_resources": include}
-    result = await getattr(tools, tool)(identifier, view=view, **kwargs)
+    result = await tools.get_paper("art_test", view=view, **kwargs)
     assert len(calls) == 1
-    assert calls[0][1]["include_resources"] is (True if include is None else include)
-    assert result["resources"][0]["url"] == "https://github.com/example/code"
+    expected_params = {"include_resources": True if include is None else include}
+    if view == "context":
+        expected_params["view"] = "compact"
+        assert calls[0] == ("/api/v1/context/paper/art_test", expected_params)
+    else:
+        assert calls[0] == ("/api/v1/papers/art_test", expected_params)
+    assert result["artifact_id"] == "art_test"
+    if include is False:
+        assert "resources" not in result
+    else:
+        assert result["resources"][0]["url"] == "https://github.com/example/code"
 
 
 @pytest.mark.parametrize("view", ["preview", "blog", "figures", "concepts", "neighbors"])
@@ -40,9 +51,8 @@ async def test_mcp_resource_defaults_and_call(monkeypatch):
     monkeypatch.setattr(tools, "api_payload", api_payload)
     app = server.create_mcp()
     listed = {tool.name: tool for tool in await app.list_tools()}
-    for name in ("get_work", "get_paper"):
-        assert listed[name].input_schema["properties"]["include_resources"]["default"] is True
+    assert listed["get_paper"].input_schema["properties"]["include_resources"]["default"] is True
     async with Client(app) as client:
-        result = await client.call_tool("get_work", {"work_id_or_url": "wrk_test"})
+        result = await client.call_tool("get_paper", {"artifact_id_or_url": "art_test"})
         assert not result.is_error
         assert result.structured_content["resources"][0]["url"].startswith("https://github.com/")

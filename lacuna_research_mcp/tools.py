@@ -19,8 +19,19 @@ from lacuna_research_mcp.ids import (
     extract_paper_id,
     extract_route_key,
     extract_venue_key_year,
+    extract_work_page_id,
     path_segment,
 )
+
+_WORK_INTERNAL_FIELDS = frozenset(
+    {
+        "work_id",
+        "work_url",
+        "identity_anchor_artifact_id",
+        "matched_artifact_id",
+    }
+)
+_OMIT_WHEN_EMPTY = frozenset({"resources", "versions"})
 
 _SEARCH_TYPE_ALIASES = {
     "all": "all",
@@ -30,8 +41,8 @@ _SEARCH_TYPE_ALIASES = {
     "directions": "cluster",
     "paper": "paper",
     "papers": "paper",
-    "work": "work",
-    "works": "work",
+    "work": "paper",
+    "works": "paper",
     "author": "author",
     "authors": "author",
     "institution": "institution",
@@ -78,13 +89,13 @@ _SEARCH_SORTS = frozenset({"relevance", "year_desc", "year_asc"})
 # these are validated here instead so the caller gets an error rather than a
 # silently degraded ranking.
 _SEARCH_FIELD_TYPES: dict[str, frozenset[str]] = {
-    "title": frozenset({"paper", "work", "cluster", "venue", "hypothesis"}),
-    "abstract": frozenset({"paper", "work"}),
-    "summary": frozenset({"paper", "work"}),
-    "concepts": frozenset({"paper", "work"}),
+    "title": frozenset({"paper", "cluster", "venue", "hypothesis"}),
+    "abstract": frozenset({"paper"}),
+    "summary": frozenset({"paper"}),
+    "concepts": frozenset({"paper"}),
     "name": frozenset({"author", "institution", "venue"}),
     "top_names": frozenset({"cluster", "hypothesis"}),
-    "venue": frozenset({"paper", "work", "venue"}),
+    "venue": frozenset({"paper", "venue"}),
 }
 _SEARCH_FIELDS = frozenset(_SEARCH_FIELD_TYPES)
 _SEARCH_FIELD_MAX_WEIGHT = 100.0
@@ -238,22 +249,20 @@ async def search_lacuna(
     ranking_profile: str | None = None,
     fields: str | None = None,
 ) -> dict[str, Any]:
-    """Search Lacuna's ML/AI corpus for Works, papers, research directions, authors,
+    """Search Lacuna's ML/AI corpus for papers, research directions, authors,
     venues, institutions, and novel research hypotheses.
 
     For novel ML/AI research ideas, use search_type="hypothesis", then
     get_hypothesis on promising results.
 
-    search_type accepts all, cluster/direction, work, paper, author, institution,
-    venue, or hypothesis/proposal; singular and plural aliases are accepted.
-    Use work for research grouped across versions, then get_work for details.
-    Paper searches can also return Work results.
+    search_type accepts all, cluster, paper, author, institution, venue, or
+    hypothesis. Use paper for literature and get_paper to read a result.
     Use other sources for biographies, news, and non-research web content.
 
     ranking_profile accepts:
     - default / lexical (default): production ranking; relevance-sorted paper
       searches combine lexical and semantic retrieval when fields is unset.
-    - semantic: conceptual paper retrieval; supported for work, paper, and all.
+    - semantic: conceptual paper retrieval; supported for paper and all.
     - bm25_title_abstract / bm25: lexical paper matching over those fields.
 
     sort accepts relevance (default), year_desc, or year_asc. Semantic ranking
@@ -307,7 +316,49 @@ async def search_lacuna(
     if normalized_fields is not None:
         params["fields"] = normalized_fields
 
-    return await api_payload("/api/v1/search", params=params)
+    payload = await api_payload("/api/v1/search", params=params)
+    return _filter_embedded_papers(payload)
+
+
+def _work_to_paper(payload: dict[str, Any]) -> dict[str, Any]:
+    paper_id = payload.get("artifact_id") or payload.get("presentation_artifact_id")
+    if not paper_id:
+        raise ValueError("Work context is missing its paper artifact ID")
+    return {
+        **payload,
+        "type": "paper",
+        "id": paper_id,
+        "artifact_id": paper_id,
+        "context_key": f"paper:{paper_id}",
+    }
+
+
+def _strip_work_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in payload.items()
+        if key not in _WORK_INTERNAL_FIELDS and not (key in _OMIT_WHEN_EMPTY and value == [])
+    }
+
+
+def _filter_embedded_papers(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_filter_embedded_papers(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    if value.get("type") == "paper":
+        value = _strip_work_fields(value)
+    result = {}
+    for key, item in value.items():
+        # Embedded paper records may lack a type, so recognize them by their parent key.
+        if key in {"papers", "related_papers"} and isinstance(item, list):
+            item = [
+                _strip_work_fields(paper) if isinstance(paper, dict) else paper for paper in item
+            ]
+        elif key == "paper" and isinstance(item, dict):
+            item = _strip_work_fields(item)
+        result[key] = _filter_embedded_papers(item)
+    return result
 
 
 async def _paper_payload(
@@ -321,8 +372,10 @@ async def _paper_payload(
         route_template.format(artifact_id=path_segment(artifact_id)),
         params=params,
     )
+    # Some paper views omit "type", so strip their top-level fields explicitly.
+    payload = _strip_work_fields(payload)
     payload["artifact_id"] = artifact_id
-    return payload
+    return _filter_embedded_papers(payload)
 
 
 async def get_hypothesis(
@@ -378,7 +431,7 @@ async def get_direction(
     params = {"view": "compact"} if normalized_view == "context" else None
     payload = await api_payload(route_template.format(cluster_id=cluster_id), params=params)
     payload["cluster_id"] = cluster_id
-    return payload
+    return _filter_embedded_papers(payload)
 
 
 async def get_direction_papers(
@@ -408,41 +461,7 @@ async def get_direction_papers(
         },
     )
     payload["cluster_id"] = cluster_id
-    return payload
-
-
-async def get_work(
-    work_id_or_url: str,
-    view: ContextView = "context",
-    figure_limit: int | None = None,
-    include_resources: bool = True,
-) -> dict[str, Any]:
-    """Fetch a Lacuna Work by Work ID or URL returned by search.
-
-    A Work groups versions of the same research. Content comes from its selected
-    version; versions lists the available papers and their artifact IDs.
-    Use get_paper with a version's artifact_id to inspect that paper.
-    include_resources adds public code repositories across all versions by
-    default. Pass False to omit them.
-
-    view="context" returns compact context with a summary, authors, figure
-    preview, and versions. view="full" also includes concepts, related papers,
-    all figures, and the selected paper record.
-
-    figure_limit (context view only) caps the figure preview (server default 3).
-    Pass 0 to suppress figure previews while keeping a figures_truncated signal.
-    """
-    normalized_view = _normalize_view(view, _CONTEXT_VIEW_ROUTES)
-    work_id = extract_route_key(work_id_or_url, "work")
-    params: dict[str, Any] = {
-        "view": _CONTEXT_VIEW_ROUTES[normalized_view],
-        "include_resources": include_resources,
-    }
-    if normalized_view == "context" and figure_limit is not None:
-        if figure_limit < 0:
-            raise ValueError("figure_limit must be greater than or equal to 0")
-        params["figure_limit"] = figure_limit
-    return await api_payload(f"/api/v1/context/work/{path_segment(work_id)}", params=params)
+    return _filter_embedded_papers(payload)
 
 
 async def get_paper(
@@ -453,8 +472,6 @@ async def get_paper(
 ) -> dict[str, Any]:
     """Fetch a Lacuna paper by artifact id or paper URL.
 
-    For a Work search result, use get_work first; pass a version's artifact_id
-    here to read that specific paper.
     include_resources adds public code repositories in context and full views
     by default. Pass False to omit them; other views ignore this option.
 
@@ -464,9 +481,10 @@ async def get_paper(
 
     - "context" (default, recommended): agent-oriented summary with
       summary_markdown, authors, and a small figure preview. Start here for almost
-      everything.
-    - "full": raw upstream paper record only. Cheaper than context when you
-      only need basic metadata.
+      everything. Available versions are included when present; to read another
+      version, use its artifact ID from the returned version list.
+    - "full": raw upstream paper record. Cheaper than context when you only
+      need basic metadata.
     - "preview": compact card with unique fields `excerpt`, `excerpt_kind`,
       `bookmarked`. Use for citation-style display.
     - "blog": just the summary_markdown content, without the rest of the
@@ -489,6 +507,16 @@ async def get_paper(
             if figure_limit < 0:
                 raise ValueError("figure_limit must be greater than or equal to 0")
             params["figure_limit"] = figure_limit
+    work_id = extract_work_page_id(artifact_id_or_url)
+    if work_id is not None:
+        context = await api_payload(
+            f"/api/v1/context/work/{path_segment(work_id)}",
+            params=params if normalized_view == "context" else {"view": "compact"},
+        )
+        context = _work_to_paper(context)
+        if normalized_view == "context":
+            return _filter_embedded_papers(context)
+        artifact_id_or_url = context["artifact_id"]
     return await _paper_payload(artifact_id_or_url, route_template, params=params)
 
 
@@ -505,7 +533,7 @@ async def get_author_papers(
         params={"limit": limit, "offset": offset},
     )
     payload["author_id"] = author_id
-    return payload
+    return _filter_embedded_papers(payload)
 
 
 async def get_author_directions(
@@ -558,7 +586,7 @@ async def get_author_context(
         params=params,
     )
     payload["author_id"] = author_id
-    return payload
+    return _filter_embedded_papers(payload)
 
 
 async def get_author_neighbors(
@@ -669,7 +697,6 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_hypothesis,
     get_direction,
     get_direction_papers,
-    get_work,
     get_paper,
     get_author_papers,
     get_author_directions,

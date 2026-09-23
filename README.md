@@ -158,29 +158,27 @@ python -m pip install -e .
 After connecting the server, call:
 
 1. `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=10)`
-2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="works", limit=10)` (production lexical+semantic paper ranking by default)
+2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="paper", limit=10)` (production lexical+semantic paper ranking by default)
 3. `get_hypothesis(hypothesis_id_or_url="bd35de182c2325ae")`
-4. `get_work(work_id_or_url="<Work ID or URL from search>")` (defaults to `view="context"`)
+4. `get_paper(artifact_id_or_url="art_79c57fbfec094f26b79c422cf08fed34")` (defaults to `view="context"`)
 5. `get_direction(cluster_id_or_url=25108)` (defaults to `view="context"`)
 
 ## Scope
 
-The corpus covers machine learning and AI research: Works, papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
+The corpus covers machine learning and AI research: papers, research directions, authors' research output, venues, institutions, and generated research hypotheses. It does not contain biographies, news, or non-research web content. Agents should answer questions outside that scope from other sources.
 
 ## What it exposes
 
 - `search_lacuna`
-  Uses Lacuna's public `/api/v1/search` endpoint for directions, Works, papers, authors, venues, institutions, and hypotheses. Explicit Work or paper searches (`search_type="work"` or `"paper"`) use the server's production lexical+semantic ranker when the other ranking arguments remain at their defaults. Pass `search_type="hypothesis"` (or `"hypotheses"` / `"proposal"` / `"proposals"`) for hypothesis search.
+  Uses Lacuna's public `/api/v1/search` endpoint for directions, papers, authors, venues, institutions, and hypotheses. Explicit paper searches (`search_type="paper"`) use the server's production lexical+semantic ranker when the other ranking arguments remain at their defaults. Pass `search_type="hypothesis"` for hypothesis search.
 - `get_hypothesis(hypothesis_id_or_url, view="context")`
   Hypothesis/proposal. `view="context"` (default) is a compact single-fetch proposal context (summary, abstract, linked directions); `view="full"` returns the server's version record with version history and signal counts. Proposal bodies are in `versions[].markdown`.
 - `get_direction(cluster_id_or_url, view="context")`
   Research direction/cluster. `view="context"` (default) requests the compact agent-oriented summary; `view="full"` returns the raw cluster record.
 - `get_direction_papers(cluster_id_or_url, page, limit, view="compact")`
   Paginated papers attached to a direction. `view="compact"` (default) returns citation-ready rows (id, url, title, year, venue, a few authors, abstract snippet); `view="full"` returns the raw upstream paper records.
-- `get_work(work_id_or_url, view="context", figure_limit=None, include_resources=True)`
-  Work lookup for research grouped across versions. Returns the selected version’s content and a version list. `view="context"` is compact; `view="full"` includes concepts, related papers, all figures, and the selected paper record. Public code repositories across all versions are included by default; pass `include_resources=False` to omit them. Use `get_paper` with a version’s `artifact_id` for that paper.
 - `get_paper(artifact_id_or_url, view="context", figure_limit=None, include_resources=True)`
-  Specific paper-version lookup. Public code repositories are included by default in context and full views; pass `include_resources=False` to omit them. Other views ignore this option. `view="context"` (default) requests the compact agent-oriented context; other views are `"full"`, `"preview"`, `"blog"`, `"figures"`, `"concepts"`, or `"neighbors"`. In context view, `figure_limit` caps the figure preview (server default 3; pass 0 to suppress previews while keeping a `figures_truncated` signal).
+  Paper lookup with available versions; use a version’s artifact ID to read it. Public code repositories are included by default in context and full views; pass `include_resources=False` to omit them. Other views ignore this option. `view="context"` (default) requests the compact agent-oriented context; other views are `"full"`, `"preview"`, `"blog"`, `"figures"`, `"concepts"`, or `"neighbors"`. In context view, `figure_limit` caps the figure preview (server default 3; pass 0 to suppress previews while keeping a `figures_truncated` signal).
 - Author tools:
   `get_author_context(…, view="context")`, `get_author_papers`, `get_author_directions`, and `get_author_neighbors`. Start with `get_author_context`, which defaults to the compact agent-oriented view (capped papers plus a readable `impact_directions` list instead of raw `impact_clusters` telemetry). Use the dedicated papers, directions, and neighbors tools to page through those collections without repeating the author context. `view="full"` returns the server-bounded full-shape context (collections remain capped at 100). Pass `include_neighbors=true` to explicitly include similar authors; this may add significant server latency.
 - Venue and institution tools:
@@ -190,11 +188,10 @@ The corpus covers machine learning and AI research: Works, papers, research dire
 
 | MCP tool | Lacuna API endpoint |
 | --- | --- |
-| `search_lacuna(query, search_type, limit, offset, author_id_or_url, date_from, date_to, venue, sort, ranking_profile, fields)` | `GET /api/v1/search` (`author_id_or_url` constrains `search_type="paper"` to one author, accepting a raw author ID or Lacuna author page URL. `fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker. Allowed fields are `title`, `abstract`, `summary`, `concepts`, `name`, `top_names`, `venue`, each valid only for the types that carry it — `title`: paper/work/cluster/venue/hypothesis; `abstract`/`summary`/`concepts`: paper/work; `name`: author/institution/venue; `top_names`: cluster/hypothesis; `venue`: paper/work/venue (`search_type="all"` spans all). Weights must satisfy `0 < weight <= 100`. Unknown fields, out-of-range weights, type-incompatible fields, and `fields` combined with `ranking_profile="semantic"` are rejected, since the server would otherwise silently drop, cap, or ignore them.) |
+| `search_lacuna(query, search_type, limit, offset, author_id_or_url, date_from, date_to, venue, sort, ranking_profile, fields)` | `GET /api/v1/search` (`author_id_or_url` constrains `search_type="paper"` to one author, accepting a raw author ID or Lacuna author page URL. `fields` restricts/weights the text fields used for lexical ranking, e.g. `title^4,abstract`, and selects the experimental lexical ranker; for a default relevance-sorted paper search, this bypasses the production lexical+semantic ranker. Allowed fields are `title`, `abstract`, `summary`, `concepts`, `name`, `top_names`, `venue`, each valid only for the types that carry it — `title`: paper/cluster/venue/hypothesis; `abstract`/`summary`/`concepts`: paper; `name`: author/institution/venue; `top_names`: cluster/hypothesis; `venue`: paper/venue (`search_type="all"` spans all). Weights must satisfy `0 < weight <= 100`. Unknown fields, out-of-range weights, type-incompatible fields, and `fields` combined with `ranking_profile="semantic"` are rejected, since the server would otherwise silently drop, cap, or ignore them.) |
 | `get_hypothesis(hypothesis_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/hypothesis/{hypothesis_id}?view=compact`; `view="full"` → `GET /api/v1/hypotheses/{hypothesis_id}` |
 | `get_direction(cluster_id_or_url, view="context")` | `view="context"` → `GET /api/v1/context/direction/{cluster_id}?view=compact`; `view="full"` → `GET /api/v1/clusters/{cluster_id}` |
 | `get_direction_papers(cluster_id_or_url, page, limit, view="compact")` | `GET /api/v1/clusters/{cluster_id}/papers?view=compact` (default) or `?view=complete` |
-| `get_work(work_id_or_url, view="context", figure_limit=None, include_resources=True)` | `GET /api/v1/context/work/{work_id}`; `view="context"` → `?view=compact` (`&figure_limit=N` when set); `view="full"` → `?view=complete`; both send `include_resources` |
 | `get_paper(artifact_id_or_url, view="context", figure_limit=None, include_resources=True)` | `view="context"` → `GET /api/v1/context/paper/{artifact_id}?view=compact` (`&figure_limit=N` when set); `view="full"` → `GET /api/v1/papers/{artifact_id}`; `view="preview"` → `…/preview`; `view="blog"` → `…/blog`; `view="figures"` → `…/figures`; `view="concepts"` → `…/concepts`; `view="neighbors"` → `…/neighbors`; context and full send `include_resources` |
 | `get_author_papers(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/papers` |
 | `get_author_directions(author_id_or_url, limit=50, offset=0)` | `GET /api/v1/authors/{author_id}/directions` |
@@ -218,9 +215,9 @@ through March 31, 2022.
 `search_lacuna` exposes these ranking profiles:
 
 - `default` / `lexical`
-  The default profile for all searches. With `search_type="paper"` or `"work"`, `sort="relevance"`, and `fields` unset, it uses the server's production lexical+semantic ranker with graceful fallback. The MCP's default `search_type="all"` uses the server's default lexical ranking instead.
+  The default profile for all searches. With `search_type="paper"`, `sort="relevance"`, and `fields` unset, it uses the server's production lexical+semantic ranker with graceful fallback. The MCP's default `search_type="all"` uses the server's default lexical ranking instead.
 - `semantic`
-  Use for embedding-based paper retrieval. The semantic query omits the normal lexical ranking leg, but the server can still overlay exact-title lexical matches. Only supported for `work`, `paper`, and `all` searches (only papers have semantic embeddings).
+  Use for embedding-based paper retrieval. The semantic query omits the normal lexical ranking leg, but the server can still overlay exact-title lexical matches. Only supported for `paper` and `all` searches (only papers have semantic embeddings).
 - `bm25_title_abstract` / `bm25`
   Use for lexical matching constrained to title and abstract. Rejected for `author` and `institution` searches (those records have no title or abstract fields).
 
@@ -268,7 +265,6 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
 
 - `get_paper` and `get_direction` default to `view="context"`. These context views request Lacuna's compact agent-oriented payloads by default to keep MCP responses small. Paper context includes `summary_markdown` when available (otherwise `abstract`), authors, and figures; direction context includes `summary_markdown`, capped papers/authors/related directions, and truncation markers. Use `view="full"` when you need the raw metadata, and the other paper views (`preview`, `blog`, `figures`, `concepts`, `neighbors`) when you want one isolated sub-resource.
 - An explicit relevance-sorted paper search with no custom `fields` defaults to the server's production lexical+semantic ranker. Set `ranking_profile="semantic"` for embedding-based retrieval (with a possible exact-title overlay) or `"bm25_title_abstract"` for title-and-abstract lexical matching.
-- Search type aliases are normalized client-side, so `works`, `papers`, `directions`, and `hypotheses` are accepted and mapped to the server's singular values.
 - Most detail tools accept either the id returned by search or the corresponding Lacuna URL.
 - Relative Lacuna URLs in `url`/`*_url` response fields and fields named `summary_markdown`, `article_markdown`, `markdown`, `content`, or `description` are normalized to absolute URLs.
 - Venue and institution keys are opaque hashes (for example `d7bf22905bd6`), never human-readable names like `icml`. Find the key with `search_lacuna(search_type="venue")` first, or pass a `/venue/...` page URL.

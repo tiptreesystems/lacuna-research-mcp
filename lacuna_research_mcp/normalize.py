@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 _RELATIVE_LACUNA_URL_RE = re.compile(
     r"(?<!\w)"
     r"(/"
-    r"(?:author|cluster|direction|figures|hypothesis|institution|node|paper|pdf|venue)"
+    r"(?:author|cluster|direction|figures|hypothesis|institution|node|paper|pdf|venue|work)"
     r"""/[^\s)"'>]+)"""
 )
 _MARKDOWN_FIELD_NAMES = frozenset(

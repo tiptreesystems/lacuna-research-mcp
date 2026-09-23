@@ -31,6 +31,9 @@ def extract_hypothesis_id(value: str) -> str:
 
 def extract_paper_id(value: str) -> str:
     value = value.strip()
+    version_match = re.search(r"/work/[^?#]+/version/(art_[^/?#]+)(?:/md)?(?:[?#].*)?$", value)
+    if version_match:
+        return unquote(version_match.group(1))
     match = re.search(r"/paper/([^?#]+)", value)
     if match:
         parts = [part for part in match.group(1).strip("/").split("/") if part]
@@ -41,6 +44,16 @@ def extract_paper_id(value: str) -> str:
     if _looks_like_url_or_path(value):
         raise ValueError(f"Invalid paper id or URL: {value!r}")
     return value
+
+
+def extract_work_page_id(value: str) -> str | None:
+    """Return a bare Work ID or one from a main page URL, excluding version URLs."""
+    value = value.strip()
+    if re.fullmatch(r"wrk_[A-Za-z0-9_-]+", value):
+        return value
+    path = urlparse(value).path
+    match = re.fullmatch(r"/work/(?:[^/]+/)?(wrk_[^/]+)(?:/md)?/?", path)
+    return unquote(match.group(1)) if match else None
 
 
 def extract_cluster_id(value: str | int) -> int:
@@ -79,10 +92,6 @@ def extract_route_key(value: str, route_name: str) -> str:
             ]
             if non_suffix_parts:
                 return non_suffix_parts[1] if len(non_suffix_parts) > 1 else non_suffix_parts[0]
-        elif route_name == "work":
-            for part in parts:
-                if part.startswith("wrk_"):
-                    return part
         elif route_name == "institution" and parts:
             return parts[0]
         elif parts:
