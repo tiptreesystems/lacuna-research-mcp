@@ -188,17 +188,20 @@ async def test_lifespan_closes_http_client() -> None:
 
 
 @pytest.mark.parametrize(
-    "version_info",
+    ("version_info", "expected_version"),
     [
-        (3, 14, 0, "alpha", 7),
-        (3, 14, 0, "beta", 4),
-        (3, 14, 0, "candidate", 2),
+        ((3, 14, 0, "alpha", 7), "3.14.0a7"),
+        ((3, 14, 0, "beta", 4), "3.14.0b4"),
+        ((3, 14, 0, "candidate", 2), "3.14.0rc2"),
     ],
 )
-def test_unsupported_python_message_flags_early_314_prereleases(version_info):
+def test_unsupported_python_message_flags_early_314_prereleases(
+    version_info: tuple[int, int, int, str, int],
+    expected_version: str,
+) -> None:
     message = server._unsupported_python_message(version_info)
     assert message is not None
-    assert "prerelease" in message
+    assert f"Python {expected_version} is a prerelease" in message
     assert "uvx --python 3.13 lacuna-research-mcp" in message
 
 
@@ -212,14 +215,16 @@ def test_unsupported_python_message_flags_early_314_prereleases(version_info):
         (3, 14, 2, "final", 0),
     ],
 )
-def test_unsupported_python_message_allows_supported_interpreters(version_info):
+def test_unsupported_python_message_allows_supported_interpreters(
+    version_info: tuple[int, int, int, str, int],
+) -> None:
     assert server._unsupported_python_message(version_info) is None
 
 
-def test_main_exits_cleanly_on_unsupported_python(monkeypatch):
+def test_main_exits_cleanly_on_unsupported_python(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(server, "_unsupported_python_message", lambda: "nope")
 
-    def fail_create():
+    def fail_create() -> None:
         raise AssertionError("create_mcp should not run")
 
     monkeypatch.setattr(server, "create_mcp", fail_create)
