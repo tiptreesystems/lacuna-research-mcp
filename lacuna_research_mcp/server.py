@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -62,6 +63,31 @@ async def _lifespan(_server: Any) -> AsyncIterator[None]:
         await close_http_client()
 
 
+def _unsupported_python_message(
+    version_info: tuple[int, int, int, str, int] | None = None,
+) -> str | None:
+    """Return an actionable error for interpreters known to break the MCP SDK.
+
+    Python 3.14 prereleases before 3.14.0rc3 lack the ``prefer_fwd_module``
+    argument of ``typing._eval_type``. Pydantic (used by the MCP SDK) passes it on
+    every 3.14 interpreter, so importing ``mcp`` crashes with an opaque
+    ``TypeError`` raised while building ``mcp_types`` models. Older uv releases
+    installed 3.14.0rc2 as their managed "3.14", which ``uvx`` then selects.
+    """
+    major, minor, micro, releaselevel, serial = version_info or sys.version_info
+    if (major, minor, micro) != (3, 14, 0) or releaselevel == "final":
+        return None
+    if releaselevel == "candidate" and serial >= 3:
+        return None
+    suffix = {"alpha": "a", "beta": "b", "candidate": "rc"}.get(releaselevel, releaselevel)
+    return (
+        f"Python 3.14.0{suffix}{serial} is a prerelease that the MCP SDK cannot run on. "
+        "Install a released Python 3.14 (update uv with `uv self update`, then run "
+        "`uv python install 3.14`), or pick another version: "
+        "`uvx --python 3.13 lacuna-research-mcp`."
+    )
+
+
 def create_mcp() -> Any:
     configure_runtime_from_env()
     log_level = log_level_from_env()
@@ -80,6 +106,9 @@ def create_mcp() -> Any:
 
 
 def main() -> None:
+    unsupported = _unsupported_python_message()
+    if unsupported is not None:
+        raise SystemExit(unsupported)
     try:
         app = create_mcp()
     except ValueError as exc:

@@ -185,3 +185,43 @@ async def test_lifespan_closes_http_client() -> None:
     assert fake_client.closed
     assert client.RUNTIME._client is None
     assert client.RUNTIME._client_loop is None
+
+
+@pytest.mark.parametrize(
+    "version_info",
+    [
+        (3, 14, 0, "alpha", 7),
+        (3, 14, 0, "beta", 4),
+        (3, 14, 0, "candidate", 2),
+    ],
+)
+def test_unsupported_python_message_flags_early_314_prereleases(version_info):
+    message = server._unsupported_python_message(version_info)
+    assert message is not None
+    assert "prerelease" in message
+    assert "uvx --python 3.13 lacuna-research-mcp" in message
+
+
+@pytest.mark.parametrize(
+    "version_info",
+    [
+        (3, 11, 9, "final", 0),
+        (3, 13, 0, "candidate", 1),
+        (3, 14, 0, "candidate", 3),
+        (3, 14, 0, "final", 0),
+        (3, 14, 2, "final", 0),
+    ],
+)
+def test_unsupported_python_message_allows_supported_interpreters(version_info):
+    assert server._unsupported_python_message(version_info) is None
+
+
+def test_main_exits_cleanly_on_unsupported_python(monkeypatch):
+    monkeypatch.setattr(server, "_unsupported_python_message", lambda: "nope")
+
+    def fail_create():
+        raise AssertionError("create_mcp should not run")
+
+    monkeypatch.setattr(server, "create_mcp", fail_create)
+    with pytest.raises(SystemExit, match="nope"):
+        server.main()
