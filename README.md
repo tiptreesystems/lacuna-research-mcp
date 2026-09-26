@@ -124,9 +124,10 @@ Run it without installing a persistent command:
 uvx lacuna-research-mcp
 ```
 
-If this exits with "Python 3.14.0rc2 is a prerelease...", your uv is using an early Python 3.14
-prerelease that the MCP SDK does not support. Update uv (`uv self update`), install a released
-Python (`uv python install 3.14`), or run `uvx --python 3.13 lacuna-research-mcp`.
+If this exits with a prerelease error (for example, "Python 3.14.0rc2 is a prerelease..."),
+your uv is using an early Python 3.14 prerelease that the MCP SDK does not support.
+Update uv (`uv self update`), install a released Python (`uv python install 3.14`),
+or run `uvx --python 3.13 lacuna-research-mcp`.
 
 ### Latest development version
 

@@ -63,7 +63,9 @@ async def _lifespan(_server: Any) -> AsyncIterator[None]:
         await close_http_client()
 
 
-def _unsupported_python_message(version_info: tuple[Any, ...] | None = None) -> str | None:
+def _unsupported_python_message(
+    version_info: tuple[int, int, int, str, int] | None = None,
+) -> str | None:
     """Return an actionable error for interpreters known to break the MCP SDK.
 
     Python 3.14 prereleases before 3.14.0rc3 lack the ``prefer_fwd_module``
