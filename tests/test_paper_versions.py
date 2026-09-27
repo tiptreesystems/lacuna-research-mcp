@@ -119,7 +119,7 @@ async def test_only_paper_tool_registered(monkeypatch):
     monkeypatch.setattr(tools, "api_payload", api_payload)
     app = server.create_mcp()
     listed = {tool.name: tool for tool in await app.list_tools()}
-    assert len(listed) == 12
+    assert len(listed) == 13
     assert "get_work" not in listed and "get_paper" in listed
     assert "get_work" not in server.SERVER_INSTRUCTIONS
     async with Client(app) as client:
