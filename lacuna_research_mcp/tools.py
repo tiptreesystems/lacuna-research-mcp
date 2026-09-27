@@ -13,6 +13,7 @@ from lacuna_research_mcp.config import (
     INSTITUTION_AUTHORS_MAX_LIMIT,
     SEARCH_MAX_LIMIT,
 )
+from lacuna_research_mcp.errors import RESOURCE_LOOKUP_HINT, LacunaMCPError
 from lacuna_research_mcp.ids import (
     extract_cluster_id,
     extract_hypothesis_id,
@@ -473,6 +474,9 @@ async def get_direction(
 ) -> dict[str, Any]:
     """Fetch a Lacuna research direction/cluster.
 
+    Use a numeric cluster ID (for example 25005) or a direction URL ending in
+    that number.
+
     view selects the response shape (`context` typically contains the fields
     `full` provides plus the agent-oriented summary content):
 
@@ -582,8 +586,9 @@ async def get_paper(
 async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
     """Fetch a Lacuna research resource (code repository, dataset, model, or demo).
 
-    Use after search_lacuna(search_type="resource") with a result's id or its
-    Lacuna context_url, or with an id from get_paper's resources list.
+    Accepts a resource artifact ID (art_...) or a Lacuna resource URL
+    containing that ID (/resource/<slug>/art_...).
+
     The response includes the external url, a summary, facets (tasks, modalities,
     size, license, access), provider metrics, a README/card excerpt,
     `publications` (linked papers with paper_id, title,
@@ -593,7 +598,16 @@ async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
     results.
     """
     resource_id = extract_resource_id(resource_id_or_url)
-    payload = await api_payload(f"/api/v1/resources/{path_segment(resource_id)}")
+    try:
+        payload = await api_payload(f"/api/v1/resources/{path_segment(resource_id)}")
+    except LacunaMCPError as exc:
+        if exc.status_code != 404:
+            raise
+        raise LacunaMCPError(
+            f"Resource {resource_id!r} was not found. If this is a paper ID, use get_paper. "
+            f"{RESOURCE_LOOKUP_HINT}",
+            status_code=404,
+        ) from exc
     payload["resource_id"] = resource_id
     return payload
 

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from functools import wraps
 from typing import Any
 
 from lacuna_research_mcp.client import close_http_client, configure_runtime_from_env
 from lacuna_research_mcp.config import PACKAGE_VERSION, log_level_from_env
+from lacuna_research_mcp.errors import LacunaMCPError
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS
 
 # Kept so the self-contained scope/workflow summary lands within the first 512
@@ -89,6 +91,20 @@ def _unsupported_python_message(
     )
 
 
+def _with_tool_errors(tool_func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+    # Keep MCP imports deferred until server creation, after the interpreter check.
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    @wraps(tool_func)
+    async def wrapped(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return await tool_func(*args, **kwargs)
+        except (LacunaMCPError, ValueError) as exc:
+            raise ToolError(str(exc)) from exc
+
+    return wrapped
+
+
 def create_mcp() -> Any:
     configure_runtime_from_env()
     log_level = log_level_from_env()
@@ -102,7 +118,7 @@ def create_mcp() -> Any:
     )
     annotations = _read_only_tool_annotations()
     for tool_func in TOOL_FUNCTIONS:
-        app.tool(annotations=annotations)(tool_func)
+        app.tool(annotations=annotations)(_with_tool_errors(tool_func))
     return app
 
 

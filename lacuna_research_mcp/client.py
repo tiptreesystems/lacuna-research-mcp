@@ -299,7 +299,7 @@ def _raise_for_status(response: httpx.Response) -> None:
         excerpt = _response_excerpt(error_response)
         message = f"Lacuna API request failed with {status} for {response_url}: {excerpt}"
         logger.error(message)
-        raise LacunaMCPError(message) from exc
+        raise LacunaMCPError(message, status_code=status) from exc
 
 
 def _parse_json_response(response: httpx.Response, config: RuntimeConfig) -> Any:

@@ -36,6 +36,9 @@ jobs:
       - name: Tests
         run: uv run pytest -q
 
+      - name: Tests with freshly resolved dependencies
+        run: uv run --isolated --no-project --refresh --python "${{ matrix.python-version }}" --with ".[test]" python -m pytest -q
+
       - name: Build distribution
         run: |
           uv build

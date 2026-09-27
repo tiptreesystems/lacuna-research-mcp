@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from urllib.parse import quote, unquote, urlparse
 
+from lacuna_research_mcp.errors import RESOURCE_LOOKUP_HINT
+
 
 def path_segment(value: str | int) -> str:
     text = str(value).strip()
@@ -53,12 +55,15 @@ def extract_resource_id(value: str) -> str:
     if match:
         parts = [unquote(part) for part in match.group(1).strip("/").split("/") if part]
         for part in reversed(parts):
-            if part.startswith("art_"):
+            if re.fullmatch(r"art_[A-Za-z0-9_-]+", part):
                 return part
-        raise ValueError(f"Invalid resource id or URL: {value!r}")
-    if _looks_like_url_or_path(value):
-        raise ValueError(f"Invalid resource id or URL: {value!r}")
-    return value
+    elif re.fullmatch(r"art_[A-Za-z0-9_-]+", value):
+        return value
+    raise ValueError(
+        f"Invalid resource id or URL: {value!r}. Expected a resource ID (art_...) "
+        "or a Lacuna /resource/<slug>/art_... URL. "
+        f"{RESOURCE_LOOKUP_HINT}"
+    )
 
 
 def extract_work_page_id(value: str) -> str | None:

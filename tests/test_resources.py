@@ -303,3 +303,55 @@ async def test_mcp_resource_search_over_http(monkeypatch):
     )
     assert item["url"] == "https://huggingface.co/datasets/penfever/JANuS_dataset"
     assert f"{config.DEFAULT_SITE_URL}/paper/robust/art_9c0c" in item["description"]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "microsoft/LoRA",
+        "https://github.com/microsoft/LoRA",
+        "/resource/microsoft-lora",
+        "art_bad/path",
+        "art_",
+        "",
+    ],
+)
+async def test_invalid_resource_inputs_give_recovery_without_request(monkeypatch, value):
+    _fail_api(monkeypatch)
+    async with Client(server.create_mcp()) as mcp_client:
+        result = await mcp_client.call_tool("get_resource", {"resource_id_or_url": value})
+    assert result.is_error
+    message = " ".join(item.text for item in result.content if item.type == "text")
+    assert "Expected a resource ID (art_...)" in message
+    assert "/resource/<slug>/art_..." in message
+    assert 'search_type="resource"' in message
+    assert "context_url" in message
+
+
+@pytest.mark.parametrize("status", [404, 403])
+async def test_resource_http_errors_give_hint_only_for_not_found(monkeypatch, status):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(status, text="<!DOCTYPE html><title>Not found</title>")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+
+        async def get_http_client():
+            return http_client
+
+        monkeypatch.setattr(client, "get_http_client", get_http_client)
+        async with Client(server.create_mcp()) as mcp_client:
+            result = await mcp_client.call_tool("get_resource", {"resource_id_or_url": "art_paper"})
+    assert len(requests) == 1
+    assert result.is_error
+    message = " ".join(item.text for item in result.content if item.type == "text")
+    if status == 404:
+        assert "Resource 'art_paper' was not found" in message
+        assert "If this is a paper ID, use get_paper" in message
+        assert "context_url" in message
+        assert "<!DOCTYPE" not in message
+    else:
+        assert "403" in message
+        assert "get_paper" not in message

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import os
 import subprocess
 import sys
@@ -7,8 +8,10 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from mcp import Client
+from mcp.server.mcpserver.exceptions import ToolError
 
 from lacuna_research_mcp import client, config, server, tools
 
@@ -91,7 +94,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     # Default to WARNING so httpx's INFO request-URL logs (with the query
     # string) do not reach stderr during normal operation.
     assert fake_mcp.log_level == "WARNING"
-    assert tuple(fake_mcp.tools) == tools.TOOL_FUNCTIONS
+    assert tuple(inspect.unwrap(tool) for tool in fake_mcp.tools) == tools.TOOL_FUNCTIONS
     assert len(tools.TOOL_FUNCTIONS) == 13
     # Every read-only GET tool gets the same non-destructive annotation object.
     assert len(fake_mcp.tool_annotations) == len(tools.TOOL_FUNCTIONS)
@@ -230,3 +233,94 @@ def test_main_exits_cleanly_on_unsupported_python(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(server, "create_mcp", fail_create)
     with pytest.raises(SystemExit, match="nope"):
         server.main()
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "message"),
+    [
+        (
+            "search_lacuna",
+            {"query": "ImageNet", "search_type": "resource", "date_from": "2023"},
+            "date_from not supported for resource search",
+        ),
+        ("get_resource", {"resource_id_or_url": ""}, "Invalid resource id or URL"),
+        ("get_paper", {"artifact_id_or_url": ""}, "Path segment must not be empty"),
+    ],
+)
+async def test_tool_validation_errors_reach_mcp_client(
+    tool_name: str, arguments: dict[str, Any], message: str
+) -> None:
+    async with Client(server.create_mcp()) as mcp_client:
+        result = await mcp_client.call_tool(tool_name, arguments)
+    assert result.is_error
+    assert message in " ".join(item.text for item in result.content if item.type == "text")
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "status", "message"),
+    [
+        (
+            "search_lacuna",
+            {"query": "ImageNet", "search_type": "resource", "resource_kind": "datasets"},
+            400,
+            "Invalid kind: 'datasets'. Expected one of: codebase, dataset, demo, model.",
+        ),
+        (
+            "search_lacuna",
+            {"query": "ImageNet", "search_type": "paper", "provider": "github"},
+            400,
+            "kind/provider filters require type=resource or type=all.",
+        ),
+        (
+            "get_resource",
+            {"resource_id_or_url": "art_missing"},
+            404,
+            "Resource 'art_missing' was not found.",
+        ),
+    ],
+)
+async def test_api_errors_reach_mcp_client(
+    monkeypatch: pytest.MonkeyPatch,
+    tool_name: str,
+    arguments: dict[str, Any],
+    status: int,
+    message: str,
+) -> None:
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status, json={"detail": message})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+
+        async def get_http_client() -> httpx.AsyncClient:
+            return http_client
+
+        monkeypatch.setattr(client, "get_http_client", get_http_client)
+        async with Client(server.create_mcp()) as mcp_client:
+            result = await mcp_client.call_tool(tool_name, arguments)
+    assert len(requests) == 1
+    assert result.is_error
+    assert message in " ".join(item.text for item in result.content if item.type == "text")
+
+
+async def test_tool_wrapper_leaves_unexpected_errors_to_sdk() -> None:
+    error = RuntimeError("internal crash")
+
+    async def broken_tool() -> None:
+        raise error
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await server._with_tool_errors(broken_tool)()
+    assert exc_info.value is error
+    assert not isinstance(exc_info.value, ToolError)
+
+
+async def test_tool_wrapper_preserves_discovery_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    wrapped_tools = await server.create_mcp().list_tools()
+    monkeypatch.setattr(server, "_with_tool_errors", lambda tool: tool)
+    original_tools = await server.create_mcp().list_tools()
+    assert [tool.model_dump() for tool in wrapped_tools] == [
+        tool.model_dump() for tool in original_tools
+    ]
