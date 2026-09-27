@@ -14,7 +14,7 @@ async def test_resources_forwarding(monkeypatch, view, include):
         calls.append((path, params))
         payload = {"id": "art_test", "title": "Paper record"}
         if params["include_resources"]:
-            payload["resources"] = [{"url": "https://github.com/example/code"}]
+            payload["resources"] = [{"id": "art_code", "url": "https://github.com/example/code"}]
         return payload
 
     monkeypatch.setattr(tools, "api_payload", api_payload)
@@ -31,6 +31,7 @@ async def test_resources_forwarding(monkeypatch, view, include):
     if include is False:
         assert "resources" not in result
     else:
+        assert result["resources"][0]["id"] == "art_code"
         assert result["resources"][0]["url"] == "https://github.com/example/code"
 
 
@@ -44,19 +45,30 @@ async def test_isolated_views_unchanged(monkeypatch, view):
     await tools.get_paper("art_test", view=view)
 
 
-async def test_mcp_resource_defaults_and_call(monkeypatch):
-    async def api_payload(path, *, params):
+@pytest.mark.parametrize("view", ["context", "full"])
+async def test_mcp_resource_defaults_and_call(monkeypatch: pytest.MonkeyPatch, view: str) -> None:
+    async def api_payload(path, *, params=None):
+        if path == "/api/v1/resources/art_code":
+            return {"id": "art_code", "title": "Example code"}
         assert params["include_resources"] is True
-        return {"resources": [{"url": "https://github.com/example/code"}]}
+        return {"resources": [{"id": "art_code", "url": "https://github.com/example/code"}]}
 
     monkeypatch.setattr(tools, "api_payload", api_payload)
     app = server.create_mcp()
     listed = {tool.name: tool for tool in await app.list_tools()}
     assert listed["get_paper"].input_schema["properties"]["include_resources"]["default"] is True
     async with Client(app) as client:
-        result = await client.call_tool("get_paper", {"artifact_id_or_url": "art_test"})
+        result = await client.call_tool(
+            "get_paper", {"artifact_id_or_url": "art_test", "view": view}
+        )
         assert not result.is_error
+        resource = result.structured_content["resources"][0]
+        assert resource["id"] == "art_code"
         assert result.structured_content["resources"][0]["url"].startswith("https://github.com/")
+        detail = await client.call_tool("get_resource", {"resource_id_or_url": resource["id"]})
+        assert not detail.is_error
+        assert detail.structured_content["id"] == resource["id"]
+        assert detail.structured_content["title"] == "Example code"
 
 
 def _capture_search(monkeypatch):

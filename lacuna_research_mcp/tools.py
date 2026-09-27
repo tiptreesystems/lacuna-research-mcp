@@ -576,6 +576,7 @@ async def get_paper(
 
     include_resources adds linked public code repositories in context and full
     views by default. Pass False to omit them; other views ignore this option.
+    Pass a resource entry's id to get_resource for further details.
     Datasets and models are not included here; find them with
     search_lacuna(search_type="resource", resource_kind="dataset") and
     get_resource.
@@ -629,7 +630,8 @@ async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
     """Fetch a Lacuna research resource (code repository, dataset, model, or demo).
 
     Use after search_lacuna(search_type="resource") with a result's id or its
-    Lacuna context_url. The response includes the external url, a summary,
+    Lacuna context_url, or with an id from get_paper's resources list.
+    The response includes the external url, a summary,
     facets (tasks, modalities, size, license, access), provider metrics, a
     README/card excerpt, `publications` (linked papers with paper_id, title,
     venue, year, and relationship such as dataset_for or code_for), related
