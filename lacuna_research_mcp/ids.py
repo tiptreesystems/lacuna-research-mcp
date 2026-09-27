@@ -46,6 +46,21 @@ def extract_paper_id(value: str) -> str:
     return value
 
 
+def extract_resource_id(value: str) -> str:
+    """Return a resource artifact ID from a bare ID or a /resource/<slug>/<id> URL."""
+    value = value.strip()
+    match = re.search(r"/resource/([^?#]+)", value)
+    if match:
+        parts = [unquote(part) for part in match.group(1).strip("/").split("/") if part]
+        for part in reversed(parts):
+            if part.startswith("art_"):
+                return part
+        raise ValueError(f"Invalid resource id or URL: {value!r}")
+    if _looks_like_url_or_path(value):
+        raise ValueError(f"Invalid resource id or URL: {value!r}")
+    return value
+
+
 def extract_work_page_id(value: str) -> str | None:
     """Return a bare Work ID or one from a main page URL, excluding version URLs."""
     value = value.strip()

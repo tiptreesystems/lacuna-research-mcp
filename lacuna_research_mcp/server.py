@@ -14,8 +14,9 @@ from lacuna_research_mcp.tools import TOOL_FUNCTIONS
 # follows after that boundary.
 SERVER_INSTRUCTIONS = (
     "Lacuna is a read-only knowledge graph of machine learning and AI research: "
-    "papers, research directions (clusters), authors, venues, institutions, and "
-    "generated hypotheses. It does not cover biographies, news, or non-research "
+    "papers, research directions (clusters), authors, venues, institutions, "
+    "generated hypotheses, and paper-linked resources (code, datasets, models). "
+    "It does not cover biographies, news, or non-research "
     "web content; answer questions outside that scope from other sources rather "
     "than guessing. Workflow: if you have no ID or URL, call search_lacuna first, "
     "then pass the IDs or URLs it returns to the detail tools to fetch entity "
@@ -28,7 +29,7 @@ SERVER_INSTRUCTIONS = (
     "get_author_context, get_author_papers, get_author_directions, "
     "get_author_neighbors, "
     "get_venue_context, get_institution_context and get_institution_authors, "
-    "and get_hypothesis."
+    "get_hypothesis, and get_resource."
 )
 
 

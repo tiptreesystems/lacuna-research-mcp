@@ -60,3 +60,16 @@ def test_route_keys_ignore_author_and_institution_page_suffixes() -> None:
         == "aut_93a4"
     )
     assert ids.extract_route_key("/institution/7d42/md", "institution") == "7d42"
+
+
+def test_resource_id_extraction() -> None:
+    assert ids.extract_resource_id("art_abc") == "art_abc"
+    assert ids.extract_resource_id("/resource/some-slug/art_abc") == "art_abc"
+    assert (
+        ids.extract_resource_id(f"{config.DEFAULT_SITE_URL}/resource/some-slug/art_abc/")
+        == "art_abc"
+    )
+    with pytest.raises(ValueError, match="Invalid resource id or URL"):
+        ids.extract_resource_id(f"{config.DEFAULT_SITE_URL}/resource/slug-only")
+    with pytest.raises(ValueError, match="Invalid resource id or URL"):
+        ids.extract_resource_id(f"{config.DEFAULT_SITE_URL}/paper/slug/art_abc")

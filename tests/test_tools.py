@@ -41,7 +41,7 @@ def test_search_ranking_profile_type_compatibility() -> None:
 
 @pytest.mark.parametrize(
     "search_type",
-    ["all", "paper", "cluster", "hypothesis", "venue"],
+    ["all", "paper", "cluster", "hypothesis", "venue", "resource"],
 )
 def test_bm25_profile_accepts_every_supported_search_type(search_type: str) -> None:
     assert tools._normalize_ranking_profile("bm25", search_type) == "bm25_title_abstract"
@@ -49,7 +49,7 @@ def test_bm25_profile_accepts_every_supported_search_type(search_type: str) -> N
 
 @pytest.mark.parametrize(
     "search_type",
-    ["author", "institution", "cluster", "hypothesis", "venue"],
+    ["author", "institution", "cluster", "hypothesis", "venue", "resource"],
 )
 def test_semantic_profile_rejects_every_unsupported_search_type(search_type: str) -> None:
     with pytest.raises(

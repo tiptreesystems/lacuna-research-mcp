@@ -17,6 +17,7 @@ from lacuna_research_mcp.ids import (
     extract_cluster_id,
     extract_hypothesis_id,
     extract_paper_id,
+    extract_resource_id,
     extract_route_key,
     extract_venue_key_year,
     extract_work_page_id,
@@ -53,6 +54,8 @@ _SEARCH_TYPE_ALIASES = {
     "hypotheses": "hypothesis",
     "proposal": "hypothesis",
     "proposals": "hypothesis",
+    "resource": "resource",
+    "resources": "resource",
 }
 
 _SEARCH_RANKING_PROFILES = {
@@ -73,7 +76,7 @@ _RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
         "author and institution records have no title or abstract fields",
     ),
     "semantic": (
-        frozenset({"author", "institution", "cluster", "hypothesis", "venue"}),
+        frozenset({"author", "institution", "cluster", "hypothesis", "venue", "resource"}),
         "only papers have semantic embeddings",
     ),
 }
@@ -88,14 +91,20 @@ _SEARCH_SORTS = frozenset({"relevance", "year_desc", "year_asc"})
 # falls back to substring/title matching, ignoring the requested fields. All of
 # these are validated here instead so the caller gets an error rather than a
 # silently degraded ranking.
+# Resource documents copy their description, topics, README text, and linked
+# paper/author/direction text into "title", so "title" searches all of it.
 _SEARCH_FIELD_TYPES: dict[str, frozenset[str]] = {
-    "title": frozenset({"paper", "cluster", "venue", "hypothesis"}),
+    "title": frozenset({"paper", "cluster", "venue", "hypothesis", "resource"}),
     "abstract": frozenset({"paper"}),
     "summary": frozenset({"paper"}),
     "concepts": frozenset({"paper"}),
     "name": frozenset({"author", "institution", "venue"}),
     "top_names": frozenset({"cluster", "hypothesis"}),
     "venue": frozenset({"paper", "venue"}),
+    "description": frozenset({"resource"}),
+    "topics": frozenset({"resource"}),
+    "provider_key": frozenset({"resource"}),
+    "paper_titles": frozenset({"resource"}),
 }
 _SEARCH_FIELDS = frozenset(_SEARCH_FIELD_TYPES)
 _SEARCH_FIELD_MAX_WEIGHT = 100.0
@@ -248,16 +257,34 @@ async def search_lacuna(
     sort: str = "relevance",
     ranking_profile: str | None = None,
     fields: str | None = None,
+    resource_kind: str | list[str] | None = None,
+    provider: str | list[str] | None = None,
 ) -> dict[str, Any]:
     """Search Lacuna's ML/AI corpus for papers, research directions, authors,
-    venues, institutions, and novel research hypotheses.
+    venues, institutions, novel research hypotheses, and research resources
+    (code repositories, datasets, models, and demos linked to papers).
 
     For novel ML/AI research ideas, use search_type="hypothesis", then
     get_hypothesis on promising results.
 
-    search_type accepts all, cluster, paper, author, institution, venue, or
-    hypothesis. Use paper for literature and get_paper to read a result.
-    Use other sources for biographies, news, and non-research web content.
+    search_type accepts all, cluster, paper, author, institution, venue,
+    hypothesis, or resource. Use paper for literature and get_paper to read a
+    result. Use other sources for biographies, news, and non-research web
+    content.
+
+    Resources: search_type="resource" searches GitHub repositories, Hugging
+    Face datasets/models, and Zenodo records that Lacuna has linked to at least
+    one paper. To find benchmark or evaluation datasets, use
+    search_type="resource" with resource_kind="dataset" (for example query
+    "image classification benchmark" or a dataset name like "ImageNet").
+    resource_kind accepts codebase, dataset, model, or demo (one value or a
+    list); provider accepts github, huggingface, or zenodo. Both filters require
+    search_type "resource" or "all" (with either filter set, only resources are
+    returned). Each result has an external `url`, a Lacuna `context_url`, and
+    `linked_paper_count`; call get_resource on its id to list the linked papers
+    (with their relationship to the resource), then get_paper on those papers
+    for reported results and numbers. Resource search does not support
+    date_from/date_to, venue, year sorting, or semantic ranking.
 
     ranking_profile accepts:
     - default / lexical (default): production ranking; relevance-sorted paper
@@ -273,16 +300,42 @@ async def search_lacuna(
 
     fields optionally restricts and weights lexical fields, for example
     "title^4,abstract". Supported names are title, abstract, summary, concepts,
-    name, top_names, and venue. Fields must exist on the selected search_type,
-    weights must be within 0 < weight <= 100, and fields cannot be combined
-    with semantic ranking.
+    name, top_names, and venue, plus description, topics, provider_key, and
+    paper_titles for resources (a resource's title already includes its
+    description, topics, README text, and linked paper titles). Fields must
+    exist on the selected search_type, weights must be within
+    0 < weight <= 100, and fields cannot be combined with semantic ranking.
     """
     normalized_type = _normalize_search_type(search_type)
     if author_id_or_url is not None and normalized_type != "paper":
         raise ValueError("author_id_or_url requires search_type='paper'")
-    normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, normalized_type)
+    resource_kinds = [resource_kind] if isinstance(resource_kind, str) else resource_kind or []
+    providers = [provider] if isinstance(provider, str) else provider or []
+    # Nonempty filters restrict an "all" search to resources; the server validates values.
+    resource_only = normalized_type == "resource" or (
+        normalized_type == "all" and any(value.strip() for value in [*resource_kinds, *providers])
+    )
+    validation_type = "resource" if resource_only else normalized_type
+    if resource_only:
+        unsupported = [
+            name
+            for name, value in (("date_from", date_from), ("date_to", date_to), ("venue", venue))
+            if value
+        ]
+        if unsupported:
+            raise ValueError(
+                f"{', '.join(unsupported)} not supported for resource search; resources "
+                "have no publication date or venue, so the server would return no results. "
+                "Filter the linked papers instead."
+            )
+    normalized_ranking_profile = _normalize_ranking_profile(ranking_profile, validation_type)
     normalized_sort = _normalize_sort(sort)
-    normalized_fields = _normalize_fields(fields, normalized_type)
+    if resource_only and normalized_sort != "relevance":
+        raise ValueError(
+            f"sort {sort!r} is not supported for resource search; resources have no "
+            "year, so the server would silently return relevance order."
+        )
+    normalized_fields = _normalize_fields(fields, validation_type)
     if normalized_ranking_profile == "semantic" and normalized_fields is not None:
         raise ValueError(
             f"fields {fields!r} is not supported with ranking_profile "
@@ -315,6 +368,10 @@ async def search_lacuna(
         params["author_id"] = extract_route_key(author_id_or_url, "author")
     if normalized_fields is not None:
         params["fields"] = normalized_fields
+    if resource_kinds:
+        params["kind"] = resource_kinds
+    if providers:
+        params["provider"] = providers
 
     payload = await api_payload("/api/v1/search", params=params)
     return _filter_embedded_papers(payload)
@@ -472,8 +529,10 @@ async def get_paper(
 ) -> dict[str, Any]:
     """Fetch a Lacuna paper by artifact id or paper URL.
 
-    include_resources adds public code repositories in context and full views
-    by default. Pass False to omit them; other views ignore this option.
+    include_resources adds linked resources (code repositories, datasets, models,
+    and demos) in context and full views by default. Pass False to omit them;
+    other views ignore this option. Pass a resource entry's id to get_resource
+    for further details.
 
     view selects the response shape. `context` requests Lacuna's compact
     agent-oriented context by default, while the four single-field views
@@ -518,6 +577,25 @@ async def get_paper(
             return _filter_embedded_papers(context)
         artifact_id_or_url = context["artifact_id"]
     return await _paper_payload(artifact_id_or_url, route_template, params=params)
+
+
+async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
+    """Fetch a Lacuna research resource (code repository, dataset, model, or demo).
+
+    Use after search_lacuna(search_type="resource") with a result's id or its
+    Lacuna context_url, or with an id from get_paper's resources list.
+    The response includes the external url, a summary, facets (tasks, modalities,
+    size, license, access), provider metrics, a README/card excerpt,
+    `publications` (linked papers with paper_id, title,
+    venue, year, and relationship such as dataset_for or code_for), related
+    research directions, and other resources mentioned by this one. Pass a
+    publication's paper_id to get_paper to read the paper and its reported
+    results.
+    """
+    resource_id = extract_resource_id(resource_id_or_url)
+    payload = await api_payload(f"/api/v1/resources/{path_segment(resource_id)}")
+    payload["resource_id"] = resource_id
+    return payload
 
 
 async def get_author_papers(
@@ -698,6 +776,7 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_direction,
     get_direction_papers,
     get_paper,
+    get_resource,
     get_author_papers,
     get_author_directions,
     get_author_context,
