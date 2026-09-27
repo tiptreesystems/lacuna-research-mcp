@@ -3,6 +3,7 @@ import pytest
 from mcp import Client
 
 from lacuna_research_mcp import client, config, server, tools
+from lacuna_research_mcp.errors import LacunaMCPError
 
 
 @pytest.mark.parametrize("view", ["context", "full"])
@@ -64,7 +65,7 @@ async def test_mcp_resource_defaults_and_call(monkeypatch: pytest.MonkeyPatch, v
         assert not result.is_error
         resource = result.structured_content["resources"][0]
         assert resource["id"] == "art_code"
-        assert result.structured_content["resources"][0]["url"].startswith("https://github.com/")
+        assert resource["url"].startswith("https://github.com/")
         detail = await client.call_tool("get_resource", {"resource_id_or_url": resource["id"]})
         assert not detail.is_error
         assert detail.structured_content["id"] == resource["id"]
@@ -104,11 +105,12 @@ async def test_resource_search_type_aliases(monkeypatch, search_type):
     ("resource_kind", "expected"),
     [
         ("dataset", ["dataset"]),
-        ("Datasets", ["dataset"]),
-        ("code", ["codebase"]),
-        ("software,model", ["codebase", "model"]),
-        (["dataset", "model", "dataset"], ["dataset", "model"]),
+        ("Datasets", ["Datasets"]),
+        ("code", ["code"]),
+        ("software,model", ["software,model"]),
+        (["dataset", "model", "dataset"], ["dataset", "model", "dataset"]),
         (["demo"], ["demo"]),
+        ("benchmark", ["benchmark"]),
     ],
 )
 async def test_resource_kind_forwarded_as_repeated_kind(monkeypatch, resource_kind, expected):
@@ -125,16 +127,58 @@ async def test_resource_provider_forwarded_and_allowed_with_all(monkeypatch):
     params = calls[0][1]
     assert params["type"] == "all"
     assert params["kind"] == ["dataset"]
-    assert params["provider"] == ["huggingface", "zenodo"]
+    assert params["provider"] == ["HuggingFace", "zenodo"]
 
 
 @pytest.mark.parametrize(
     ("kwargs", "message"),
     [
-        ({"search_type": "paper", "resource_kind": "dataset"}, "require search_type='resource'"),
-        ({"search_type": "author", "provider": "github"}, "require search_type='resource'"),
-        ({"search_type": "resource", "resource_kind": "benchmark"}, "Invalid resource_kind"),
-        ({"search_type": "resource", "provider": "gitlab"}, "Invalid provider"),
+        ({"resource_kind": "datasets"}, "Invalid kind: 'datasets'."),
+        ({"provider": "gitlab"}, "Invalid provider: 'gitlab'."),
+        (
+            {"search_type": "paper", "resource_kind": "dataset"},
+            "kind/provider filters require type=resource or type=all.",
+        ),
+    ],
+)
+async def test_resource_filter_errors_come_from_server(
+    monkeypatch: pytest.MonkeyPatch, kwargs: dict, message: str
+) -> None:
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(400, json={"error": message})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+
+        async def get_http_client() -> httpx.AsyncClient:
+            return http_client
+
+        monkeypatch.setattr(client, "get_http_client", get_http_client)
+        with pytest.raises(LacunaMCPError) as exc_info:
+            await tools.search_lacuna("ImageNet", **kwargs)
+    assert message in str(exc_info.value)
+    assert len(requests) == 1
+    if "resource_kind" in kwargs:
+        assert requests[0].url.params.get_list("kind") == [kwargs["resource_kind"]]
+    if "provider" in kwargs:
+        assert requests[0].url.params.get_list("provider") == [kwargs["provider"]]
+
+
+async def test_blank_resource_filters_do_not_restrict_all_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _capture_search(monkeypatch)
+    await tools.search_lacuna(
+        "ImageNet", resource_kind=[" "], provider="", date_from="2024", sort="year_desc"
+    )
+    assert calls[0][1]["date_from"] == "2024"
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
         ({"search_type": "resource", "date_from": "2020"}, "date_from not supported"),
         (
             {"search_type": "all", "resource_kind": "dataset", "venue": "icml"},

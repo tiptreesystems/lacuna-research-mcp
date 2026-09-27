@@ -109,20 +109,6 @@ _SEARCH_FIELD_TYPES: dict[str, frozenset[str]] = {
 _SEARCH_FIELDS = frozenset(_SEARCH_FIELD_TYPES)
 _SEARCH_FIELD_MAX_WEIGHT = 100.0
 
-# Server-side resource filter values (repeated `kind` / `provider` params).
-_RESOURCE_KIND_ALIASES = {
-    "codebase": "codebase",
-    "code": "codebase",
-    "software": "codebase",
-    "dataset": "dataset",
-    "datasets": "dataset",
-    "model": "model",
-    "models": "model",
-    "demo": "demo",
-    "demos": "demo",
-}
-_RESOURCE_PROVIDERS = frozenset({"github", "huggingface", "zenodo"})
-
 
 def _normalize_search_type(search_type: str | None) -> str:
     value = "" if search_type is None else str(search_type).strip().lower()
@@ -218,28 +204,6 @@ def _normalize_fields(fields: str | None, search_type: str) -> str | None:
     if not parts:
         raise ValueError(f"Invalid fields {fields!r}: no field names found.")
     return ",".join(parts)
-
-
-def _normalize_resource_filter(
-    values: str | list[str] | None,
-    *,
-    param: str,
-    aliases: dict[str, str],
-) -> list[str]:
-    raw_values = [values] if isinstance(values, str) else list(values or [])
-    normalized: list[str] = []
-    for raw_value in raw_values:
-        for part in str(raw_value).split(","):
-            value = part.strip().lower()
-            if not value:
-                continue
-            if value not in aliases:
-                valid_values = ", ".join(sorted(set(aliases.values())))
-                raise ValueError(f"Invalid {param} {part.strip()!r}. Valid values: {valid_values}")
-            mapped = aliases[value]
-            if mapped not in normalized:
-                normalized.append(mapped)
-    return normalized
 
 
 _PAPER_VIEW_ROUTES: dict[str, str] = {
@@ -345,21 +309,12 @@ async def search_lacuna(
     normalized_type = _normalize_search_type(search_type)
     if author_id_or_url is not None and normalized_type != "paper":
         raise ValueError("author_id_or_url requires search_type='paper'")
-    resource_kinds = _normalize_resource_filter(
-        resource_kind, param="resource_kind", aliases=_RESOURCE_KIND_ALIASES
+    resource_kinds = [resource_kind] if isinstance(resource_kind, str) else resource_kind or []
+    providers = [provider] if isinstance(provider, str) else provider or []
+    # Nonempty filters restrict an "all" search to resources; the server validates values.
+    resource_only = normalized_type == "resource" or (
+        normalized_type == "all" and any(value.strip() for value in [*resource_kinds, *providers])
     )
-    providers = _normalize_resource_filter(
-        provider,
-        param="provider",
-        aliases={value: value for value in _RESOURCE_PROVIDERS},
-    )
-    if (resource_kinds or providers) and normalized_type not in {"resource", "all"}:
-        raise ValueError(
-            "resource_kind and provider require search_type='resource' (or 'all'); "
-            f"got search_type {search_type!r}."
-        )
-    # A kind/provider filter restricts even an "all" search to resource documents.
-    resource_only = normalized_type == "resource" or bool(resource_kinds or providers)
     validation_type = "resource" if resource_only else normalized_type
     if resource_only:
         unsupported = [
@@ -574,12 +529,10 @@ async def get_paper(
 ) -> dict[str, Any]:
     """Fetch a Lacuna paper by artifact id or paper URL.
 
-    include_resources adds linked public code repositories in context and full
-    views by default. Pass False to omit them; other views ignore this option.
-    Pass a resource entry's id to get_resource for further details.
-    Datasets and models are not included here; find them with
-    search_lacuna(search_type="resource", resource_kind="dataset") and
-    get_resource.
+    include_resources adds linked resources (code repositories, datasets, models,
+    and demos) in context and full views by default. Pass False to omit them;
+    other views ignore this option. Pass a resource entry's id to get_resource
+    for further details.
 
     view selects the response shape. `context` requests Lacuna's compact
     agent-oriented context by default, while the four single-field views
@@ -631,9 +584,9 @@ async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
 
     Use after search_lacuna(search_type="resource") with a result's id or its
     Lacuna context_url, or with an id from get_paper's resources list.
-    The response includes the external url, a summary,
-    facets (tasks, modalities, size, license, access), provider metrics, a
-    README/card excerpt, `publications` (linked papers with paper_id, title,
+    The response includes the external url, a summary, facets (tasks, modalities,
+    size, license, access), provider metrics, a README/card excerpt,
+    `publications` (linked papers with paper_id, title,
     venue, year, and relationship such as dataset_for or code_for), related
     research directions, and other resources mentioned by this one. Pass a
     publication's paper_id to get_paper to read the paper and its reported
