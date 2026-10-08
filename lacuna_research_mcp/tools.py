@@ -799,3 +799,20 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     get_institution_context,
     get_institution_authors,
 )
+
+# Human-readable titles shown by MCP clients, keyed by tool function name.
+TOOL_TITLES: dict[str, str] = {
+    "search_lacuna": "Search Lacuna",
+    "get_hypothesis": "Get Research Proposal",
+    "get_direction": "Get Research Direction",
+    "get_direction_papers": "List Direction Papers",
+    "get_paper": "Get Paper",
+    "get_resource": "Get Resource",
+    "get_author_papers": "List Author Papers",
+    "get_author_directions": "List Author Directions",
+    "get_author_context": "Get Author",
+    "get_author_neighbors": "List Similar Authors",
+    "get_venue_context": "Get Venue",
+    "get_institution_context": "Get Institution",
+    "get_institution_authors": "List Institution Authors",
+}

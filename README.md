@@ -129,6 +129,16 @@ your uv is using an early Python 3.14 prerelease that the MCP SDK does not suppo
 Update uv (`uv self update`), install a released Python (`uv python install 3.14`),
 or run `uvx --python 3.13 lacuna-research-mcp`.
 
+### HTTP server
+
+To serve remote MCP clients over Streamable HTTP instead of stdio:
+
+```bash
+uvx lacuna-research-mcp --transport streamable-http --host 0.0.0.0 --port 8000
+```
+
+The endpoint is `/mcp`. The server is stateless and answers with JSON, so it can run behind a load balancer without session affinity. With the default `--host 127.0.0.1`, the server accepts only localhost `Host` headers, so bind a non-loopback address when a reverse proxy forwards a public hostname.
+
 ### Latest development version
 
 PyPI contains tagged releases. To try the latest code from the `main` branch instead:
