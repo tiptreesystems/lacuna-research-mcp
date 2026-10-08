@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import sys
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from functools import wraps
 from typing import Any
@@ -9,7 +10,7 @@ from typing import Any
 from lacuna_research_mcp.client import close_http_client, configure_runtime_from_env
 from lacuna_research_mcp.config import PACKAGE_VERSION, log_level_from_env
 from lacuna_research_mcp.errors import LacunaMCPError
-from lacuna_research_mcp.tools import TOOL_FUNCTIONS
+from lacuna_research_mcp.tools import TOOL_FUNCTIONS, TOOL_TITLES
 
 # Kept so the self-contained scope/workflow summary lands within the first 512
 # characters that some MCP clients (e.g. Codex) surface; the tool enumeration
@@ -118,11 +119,29 @@ def create_mcp() -> Any:
     )
     annotations = _read_only_tool_annotations()
     for tool_func in TOOL_FUNCTIONS:
-        app.tool(annotations=annotations)(_with_tool_errors(tool_func))
+        app.tool(title=TOOL_TITLES[tool_func.__name__], annotations=annotations)(
+            _with_tool_errors(tool_func)
+        )
     return app
 
 
-def main() -> None:
+def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="lacuna-research-mcp", description="Run the Lacuna Research MCP server."
+    )
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "streamable-http"),
+        default="stdio",
+        help="stdio for local MCP clients (default); streamable-http to serve over HTTP",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="streamable-http bind address")
+    parser.add_argument("--port", type=int, default=8000, help="streamable-http bind port")
+    return parser.parse_args(argv)
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    args = _parse_args(argv)
     unsupported = _unsupported_python_message()
     if unsupported is not None:
         raise SystemExit(unsupported)
@@ -137,7 +156,18 @@ def main() -> None:
                 "`python -m pip install -e .` from the repository root"
             ) from exc
         raise
-    app.run()
+    if args.transport == "stdio":
+        app.run()
+        return
+    # Every tool is a single request/response call, so the HTTP server keeps no
+    # per-client session state and answers with plain JSON instead of a stream.
+    app.run(
+        "streamable-http",
+        host=args.host,
+        port=args.port,
+        stateless_http=True,
+        json_response=True,
+    )
 
 
 if __name__ == "__main__":

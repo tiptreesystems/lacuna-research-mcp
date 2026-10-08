@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import os
+import socket
 import subprocess
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -62,11 +65,13 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
             self.lifespan = lifespan
             self.log_level = log_level
             self.tools: list[Any] = []
+            self.tool_titles: list[str | None] = []
             self.tool_annotations: list[Any] = []
 
-        def tool(self, *, annotations: Any = None) -> Any:
+        def tool(self, *, title: str | None = None, annotations: Any = None) -> Any:
             def register(func: Any) -> Any:
                 self.tools.append(func)
+                self.tool_titles.append(title)
                 self.tool_annotations.append(annotations)
                 return func
 
@@ -96,6 +101,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     assert fake_mcp.log_level == "WARNING"
     assert tuple(inspect.unwrap(tool) for tool in fake_mcp.tools) == tools.TOOL_FUNCTIONS
     assert len(tools.TOOL_FUNCTIONS) == 13
+    assert fake_mcp.tool_titles == [tools.TOOL_TITLES[f.__name__] for f in tools.TOOL_FUNCTIONS]
     # Every read-only GET tool gets the same non-destructive annotation object.
     assert len(fake_mcp.tool_annotations) == len(tools.TOOL_FUNCTIONS)
     assert all(a is fake_mcp.tool_annotations[0] for a in fake_mcp.tool_annotations)
@@ -129,7 +135,7 @@ def test_create_mcp_log_level_env_override(monkeypatch: pytest.MonkeyPatch) -> N
         ) -> None:
             self.log_level = log_level
 
-        def tool(self, *, annotations: Any = None) -> Any:
+        def tool(self, *, title: str | None = None, annotations: Any = None) -> Any:
             return lambda func: func
 
     monkeypatch.setattr(server, "_load_mcp_server", lambda: FakeMCP)
@@ -157,6 +163,7 @@ async def test_create_mcp_exposes_instructions_and_read_only_annotations() -> No
     listed = await app.list_tools()
     assert len(listed) == len(tools.TOOL_FUNCTIONS)
     for tool in listed:
+        assert tool.title == tools.TOOL_TITLES[tool.name]
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
         assert tool.annotations.destructive_hint is False
@@ -232,7 +239,81 @@ def test_main_exits_cleanly_on_unsupported_python(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(server, "create_mcp", fail_create)
     with pytest.raises(SystemExit, match="nope"):
-        server.main()
+        server.main([])
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected_call"),
+    [
+        ([], ((), {})),
+        (
+            ["--transport", "streamable-http", "--host", "0.0.0.0", "--port", "9000"],  # noqa: S104
+            (
+                ("streamable-http",),
+                {
+                    "host": "0.0.0.0",  # noqa: S104
+                    "port": 9000,
+                    "stateless_http": True,
+                    "json_response": True,
+                },
+            ),
+        ),
+    ],
+)
+def test_main_runs_selected_transport(
+    monkeypatch: pytest.MonkeyPatch, argv: list[str], expected_call: tuple[Any, Any]
+) -> None:
+    calls = []
+
+    class FakeApp:
+        def run(self, *args: Any, **kwargs: Any) -> None:
+            calls.append((args, kwargs))
+
+    monkeypatch.setattr(server, "create_mcp", FakeApp)
+    server.main(argv)
+    assert calls == [expected_call]
+
+
+async def test_streamable_http_serves_tools() -> None:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    process = subprocess.Popen(  # noqa: S603
+        [
+            sys.executable,
+            "-c",
+            "from lacuna_research_mcp.server import main; main()",
+            "--transport",
+            "streamable-http",
+            "--port",
+            str(port),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 30
+        while True:
+            try:
+                socket.create_connection(("127.0.0.1", port), timeout=1).close()
+                break
+            except OSError:
+                if process.poll() is not None:
+                    pytest.fail(
+                        f"HTTP server exited before accepting connections:\n{process.stderr.read()}"
+                    )
+                assert time.monotonic() < deadline, "HTTP server did not start within 30s"
+                await asyncio.sleep(0.1)
+        async with Client(f"http://127.0.0.1:{port}/mcp") as mcp_client:
+            assert mcp_client.instructions == server.SERVER_INSTRUCTIONS
+            listed = await mcp_client.list_tools()
+    finally:
+        process.terminate()
+        process.wait(timeout=10)
+        process.stderr.close()
+    assert {tool.name: tool.title for tool in listed.tools} == tools.TOOL_TITLES
 
 
 @pytest.mark.parametrize(
