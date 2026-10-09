@@ -126,6 +126,8 @@ class LacunaRuntime:
         headers = {"User-Agent": config.user_agent}
         if config.bearer_token:
             headers["Authorization"] = f"Bearer {config.bearer_token}"
+        if config.client_token:
+            headers["X-Lacuna-Client-Token"] = config.client_token
         return headers
 
 

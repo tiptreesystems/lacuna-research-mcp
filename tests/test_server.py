@@ -88,6 +88,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     monkeypatch.setenv("LACUNA_MCP_MAX_RETRIES", "4")
     monkeypatch.setenv("LACUNA_MCP_USER_AGENT", "lacuna-test/1")
     monkeypatch.setenv("LACUNA_MCP_BEARER_TOKEN", " private-token ")
+    monkeypatch.setenv("LACUNA_MCP_CLIENT_TOKEN", " hosted-token ")
 
     fake_mcp = server.create_mcp()
 
@@ -112,6 +113,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
             max_retries=4,
             user_agent="lacuna-test/1",
             bearer_token="private-token",  # noqa: S106
+            client_token="hosted-token",  # noqa: S106
         )
         == client.RUNTIME.config
     )
