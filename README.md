@@ -256,6 +256,8 @@ All searches use the server default unless `ranking_profile` is provided. The MC
   Defaults to `lacuna-research-mcp/{package_version}`
 - `LACUNA_MCP_BEARER_TOKEN`
   Optional bearer token sent as `Authorization: Bearer ...` for private Lacuna deployments.
+- `LACUNA_MCP_CLIENT_TOKEN`
+  Optional token sent as `X-Lacuna-Client-Token` to identify a hosted MCP server to Lacuna for its own search rate limit.
 - `LACUNA_MCP_LOG_LEVEL`
   Defaults to `WARNING` (one of `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). The default keeps normal operation quiet; lower it only for debugging, since `INFO`/`DEBUG` let the HTTP client log full request URLs — including the search query string — to stderr, which some MCP hosts retain.
 

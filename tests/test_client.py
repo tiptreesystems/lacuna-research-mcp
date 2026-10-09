@@ -175,6 +175,24 @@ async def test_client_includes_bearer_token_header(monkeypatch: pytest.MonkeyPat
     }
 
 
+async def test_client_includes_client_token_header(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+
+    class FakeHTTPClient:
+        def __init__(self, **kwargs: Any) -> None:
+            captured.update(kwargs)
+
+    set_runtime_config(monkeypatch, client_token="hosted-token")  # noqa: S106
+    monkeypatch.setattr(client.httpx, "AsyncClient", FakeHTTPClient)
+
+    await client.get_http_client()
+
+    assert captured["headers"] == {
+        "User-Agent": config.DEFAULT_USER_AGENT,
+        "X-Lacuna-Client-Token": "hosted-token",
+    }
+
+
 async def test_stale_client_close_does_not_overwrite_concurrent_new_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

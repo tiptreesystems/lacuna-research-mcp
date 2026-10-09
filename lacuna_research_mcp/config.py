@@ -48,6 +48,7 @@ class RuntimeConfig:
     max_retries: int = DEFAULT_MAX_RETRIES
     user_agent: str = DEFAULT_USER_AGENT
     bearer_token: str | None = None
+    client_token: str | None = None
 
 
 DEFAULT_RUNTIME_CONFIG = RuntimeConfig()
@@ -104,10 +105,12 @@ def log_level_from_env() -> str:
 
 def runtime_config_from_env() -> RuntimeConfig:
     bearer_token = os.environ.get("LACUNA_MCP_BEARER_TOKEN")
+    client_token = os.environ.get("LACUNA_MCP_CLIENT_TOKEN")
     return RuntimeConfig(
         site_url=_parse_site_url(os.environ.get("LACUNA_SITE_URL")),
         http_timeout=_parse_timeout(os.environ.get("LACUNA_MCP_TIMEOUT")),
         max_retries=_parse_max_retries(os.environ.get("LACUNA_MCP_MAX_RETRIES")),
         user_agent=os.environ.get("LACUNA_MCP_USER_AGENT") or DEFAULT_USER_AGENT,
         bearer_token=bearer_token.strip() if bearer_token else None,
+        client_token=client_token.strip() if client_token else None,
     )
