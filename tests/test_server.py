@@ -103,9 +103,10 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
     assert tuple(inspect.unwrap(tool) for tool in fake_mcp.tools) == tools.TOOL_FUNCTIONS
     assert len(tools.TOOL_FUNCTIONS) == 13
     assert fake_mcp.tool_titles == [tools.TOOL_TITLES[f.__name__] for f in tools.TOOL_FUNCTIONS]
-    # Every read-only GET tool gets the same non-destructive annotation object.
+    # Every read-only GET tool gets non-destructive annotations carrying its title.
     assert len(fake_mcp.tool_annotations) == len(tools.TOOL_FUNCTIONS)
-    assert all(a is fake_mcp.tool_annotations[0] for a in fake_mcp.tool_annotations)
+    assert [a.title for a in fake_mcp.tool_annotations] == fake_mcp.tool_titles
+    assert all(a.read_only_hint and not a.destructive_hint for a in fake_mcp.tool_annotations)
     assert (
         config.RuntimeConfig(
             site_url="https://lacuna.example",
