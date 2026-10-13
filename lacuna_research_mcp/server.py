@@ -43,15 +43,17 @@ def _load_mcp_server() -> Any:
     return MCPServer
 
 
-def _read_only_tool_annotations() -> Any:
+def _read_only_tool_annotations(title: str) -> Any:
     # Deferred import mirrors _load_mcp_server so a missing mcp dependency still
     # surfaces as a clear CLI error rather than an import failure at module load.
     from mcp.types import ToolAnnotations
 
     # All tools issue GET requests against the Lacuna API: read-only,
     # non-destructive, idempotent, and querying an external corpus (open world).
-    # These are advisory hints for MCP clients, not security enforcement.
+    # These are advisory hints for MCP clients, not security enforcement. The
+    # Claude directory reads the display name from annotations.title.
     return ToolAnnotations(
+        title=title,
         readOnlyHint=True,
         destructiveHint=False,
         idempotentHint=True,
@@ -117,9 +119,9 @@ def create_mcp() -> Any:
         lifespan=_lifespan,
         log_level=log_level,
     )
-    annotations = _read_only_tool_annotations()
     for tool_func in TOOL_FUNCTIONS:
-        app.tool(title=TOOL_TITLES[tool_func.__name__], annotations=annotations)(
+        title = TOOL_TITLES[tool_func.__name__]
+        app.tool(title=title, annotations=_read_only_tool_annotations(title))(
             _with_tool_errors(tool_func)
         )
     return app
