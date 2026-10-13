@@ -29,6 +29,20 @@ Lacuna Research MCP gives AI researchers' coding agents:
 
 ## Install
 
+### Hosted MCP server (Claude connector)
+
+Use Lacuna's hosted MCP server with any client that supports Streamable HTTP. No local installation is required.
+
+```text
+https://lacuna.tiptreesystems.com/api/mcp
+```
+
+In Claude, open **Customize → Connectors → + Add → Add custom connector**. Name it **Lacuna Research**, paste the URL above, and select **No sign in** if prompted for authentication. Finish adding it, then enable it from **+ → Connectors** in your conversation.
+
+For Team and Enterprise workspaces, the connector must first be added under **Organization settings → Connectors**. See [Claude's custom connector setup](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for details.
+
+### Local installation
+
 The easiest way to install Lacuna Research MCP is to ask your coding agent, such as Codex or Claude Code:
 
 > Install and configure the `lacuna-research-mcp` package from PyPI for this client.
@@ -129,7 +143,7 @@ your uv is using an early Python 3.14 prerelease that the MCP SDK does not suppo
 Update uv (`uv self update`), install a released Python (`uv python install 3.14`),
 or run `uvx --python 3.13 lacuna-research-mcp`.
 
-### HTTP server
+### Self-hosted HTTP server
 
 To serve remote MCP clients over Streamable HTTP instead of stdio:
 
