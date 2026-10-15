@@ -67,13 +67,23 @@ def extract_resource_id(value: str) -> str:
 
 
 def extract_work_page_id(value: str) -> str | None:
-    """Return a bare Work ID or one from a main page URL, excluding version URLs."""
+    """Return the Work ID or readable name a Work page address carries.
+
+    Accepts a bare Work ID, a main page URL with the ID (/work/<slug>/wrk_...),
+    or a readable page URL (/work/<name>), which the API resolves. Version URLs
+    and anything else return None.
+    """
     value = value.strip()
     if re.fullmatch(r"wrk_[A-Za-z0-9_-]+", value):
         return value
     path = urlparse(value).path
     match = re.fullmatch(r"/work/(?:[^/]+/)?(wrk_[^/]+)(?:/md)?/?", path)
-    return unquote(match.group(1)) if match else None
+    if match:
+        return unquote(match.group(1))
+    match = re.fullmatch(r"/work/([^/]+)(?:/md)?/?", path)
+    if match and not match.group(1).startswith("wrk_"):
+        return unquote(match.group(1))
+    return None
 
 
 def extract_cluster_id(value: str | int) -> int:
