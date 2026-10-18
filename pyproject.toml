@@ -1,6 +1,6 @@
 [project]
 name = "lacuna-research-mcp"
-version = "0.6.4"
+version = "0.6.5"
 description = "MCP server for Lacuna, a research map for machine learning: search directions, papers, authors, venues, and AI-generated research proposals."
 readme = "README.md"
 license = "MIT"
@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "mcp>=2.0.0,<3",
+    "mcp>=2.2.0,<3",
     "httpx>=0.27.0",
 ]
 
