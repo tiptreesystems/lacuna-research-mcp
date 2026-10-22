@@ -1,0 +1,24 @@
+{
+  "title": "Lacuna Research MCP",
+  "upload_type": "software",
+  "description": "<p>MCP server for <a href=\"https://lacuna.tiptreesystems.com\">Lacuna</a>, a research map for machine learning: search directions, papers, authors, venues, and AI-generated research proposals.</p>",
+  "creators": [
+    {
+      "name": "Tiptree Advanced Systems Corporation"
+    }
+  ],
+  "license": "MIT",
+  "keywords": ["mcp", "model-context-protocol", "research", "machine-learning", "literature-search", "lacuna"],
+  "related_identifiers": [
+    {
+      "identifier": "https://lacuna.tiptreesystems.com",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://lacuna.tiptreesystems.com/mcp",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ]
+}
