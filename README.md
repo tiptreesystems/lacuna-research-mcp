@@ -17,13 +17,13 @@
 
 Lacuna Research MCP gives AI researchers' coding agents:
 
-- **Novel research proposals.** Explore novel research ideas generated with [Alien Science](https://openreview.net/pdf?id=XZWkDET1ia).
+- **Novel research proposals.** Explore novel research ideas generated with [The Alien Space of Science](https://arxiv.org/abs/2603.01092).
 - **Research directions.** Navigate concept clusters with linked papers, authors, and proposals.
 - **Agent-ready literature.** Search recent papers in markdown with source links.
 - **Researcher intelligence.** Trace authors, publications, directions, impact, and related researchers.
 - **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
 
-[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), is a research map of machine learning: a heterogeneous knowledge graph linking papers, research directions, authors, venues, institutions, and generated research proposals, with a source trail from every derived object back to the exact paper and page that produced it. Its pipeline reconciles scholarly records from OpenAlex, OpenReview, DBLP, and arXiv; extracts concept elements from paper text and clusters them into research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)); and samples novel research proposals from those directions with [Alien Science](https://arxiv.org/abs/2603.01092). The map spans more than **2.29 million papers**, **215,000+ author profiles**, **28,000+ research directions**, **25,000+ research proposals**, and **5,300+ venues** — and it grows continuously as new arXiv and other AI papers are ingested.
+[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), is a research map of machine learning: a heterogeneous knowledge graph linking papers, research directions, authors, venues, institutions, and generated research proposals, with a source trail from every derived object back to the exact paper and page that produced it. Its pipeline reconciles scholarly records from OpenAlex, OpenReview, DBLP, and arXiv; extracts concept elements from paper text and clusters them into research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)); and samples novel research proposals from those directions with [The Alien Space of Science](https://arxiv.org/abs/2603.01092). The map spans more than **2.29 million papers**, **215,000+ author profiles**, **28,000+ research directions**, **25,000+ research proposals**, and **5,300+ venues** — and it grows continuously as new arXiv and other AI papers are ingested.
 
 [Install](#install) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
 
@@ -308,15 +308,17 @@ The server is a thin MCP adapter over Lacuna's HTTP API. The implementation is s
 
 If you find our work helpful, feel free to cite the papers behind Lacuna's research-proposal generation and research map.
 
-**Research-proposal generation — Alien Science**
+**Research-proposal generation — The Alien Space of Science**
 
 ```bibtex
 @inproceedings{artiles2026alien,
-  title     = {Alien Science: Sampling Coherent but Cognitively Unavailable Research Directions from Idea Atoms},
-  author    = {Artiles, Alejandro H. and Weiss, Martin and Brinkmann, Levin and Goyal, Anirudh and Rahaman, Nasim},
-  booktitle = {ICLR 2026 Workshop on Post-AGI Science and Society},
+  title     = {The Alien Space of Science: Sampling Coherent but Cognitively Unavailable Research Directions},
+  author    = {Artiles, Alejandro H. and Weiss, Martin and Brinkmann, Levin and Rahwan, Iyad and Sch{\"o}lkopf, Bernhard and Pal, Christopher and Larochelle, Hugo and Goyal, Anirudh and Rahaman, Nasim},
+  booktitle = {Advances in Neural Information Processing Systems},
   year      = {2026},
-  url       = {https://openreview.net/forum?id=XZWkDET1ia}
+  eprint    = {2603.01092},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2603.01092}
 }
 ```
 
