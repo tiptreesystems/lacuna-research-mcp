@@ -11,23 +11,61 @@
 
 # Lacuna Research MCP
 
-### 🔬 Ground your coding agent in novel ideas, papers, and the ML landscape
+Find the papers behind an implementation, check prior work, and fill gaps in an
+ML reading list from your coding agent.
 
+> Find the paper behind Dao-AILab/flash-attention. Show the recorded connection
+> to the repository and link the original paper.
 
+Lacuna follows **repository → recorded paper relationship → paper and sources**.
+For this example, it returns the `official_code_for` relationship to
+[FlashAttention](https://lacuna.tiptreesystems.com/work/flashattention-fast-and-memory-efficient-exact-attention/version/art_15dcb323b0ad4ce28209944c81d9c45c),
+with links to the repository and original paper. Inspect those sources to verify
+the connection. [Run the example](examples/README.md) or
+[work through the notebook](examples/code_to_paper.ipynb).
 
-Lacuna Research MCP gives AI researchers' coding agents:
-
-- **Novel research proposals.** Explore novel research ideas generated with [The Alien Space of Science](https://arxiv.org/abs/2603.01092).
-- **Research directions.** Navigate concept clusters with linked papers, authors, and proposals.
-- **Agent-ready literature.** Search recent papers in markdown with source links.
-- **Researcher intelligence.** Trace authors, publications, directions, impact, and related researchers.
-- **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
-
-[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), is a research map of machine learning: a heterogeneous knowledge graph linking papers, research directions, authors, venues, institutions, and generated research proposals, with a source trail from every derived object back to the exact paper and page that produced it. Its pipeline reconciles scholarly records from OpenAlex, OpenReview, DBLP, and arXiv; extracts concept elements from paper text and clusters them into research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)); and samples novel research proposals from those directions with [The Alien Space of Science](https://arxiv.org/abs/2603.01092). The map spans more than **2.29 million papers**, **215,000+ author profiles**, **28,000+ research directions**, **25,000+ research proposals**, and **5,300+ venues** — and it grows continuously as new arXiv and other AI papers are ingested.
-
-[Install](#install) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
+[Install](#install) · [Research skills](#research-skills) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis)
 
 ## Install
+
+### Cursor and VS Code
+
+Use the hosted server with no local Python installation or Lacuna account:
+
+[![Add to Cursor](https://img.shields.io/badge/Add_to-Cursor-111827)](https://cursor.com/en/install-mcp?name=lacuna-research&config=eyJ1cmwiOiJodHRwczovL2xhY3VuYS50aXB0cmVlc3lzdGVtcy5jb20vYXBpL21jcCJ9)
+[![Add to VS Code](https://img.shields.io/badge/Add_to-VS_Code-007ACC)](https://vscode.dev/redirect/mcp/install?name=lacuna-research&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Flacuna.tiptreesystems.com%2Fapi%2Fmcp%22%7D)
+
+The buttons open your editor's MCP installation flow. Review the server URL and
+confirm installation. After connecting, ask the FlashAttention question above;
+your agent should use `search_lacuna`, `get_resource`, and `get_paper`.
+
+<details>
+<summary>Manual configuration if the install link doesn't open</summary>
+
+In Cursor, merge this entry into `mcpServers` in `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "lacuna-research": {"url": "https://lacuna.tiptreesystems.com/api/mcp"}
+  }
+}
+```
+
+In VS Code, merge this entry into `servers` in `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "lacuna-research": {"type": "http", "url": "https://lacuna.tiptreesystems.com/api/mcp"}
+  }
+}
+```
+
+Keep any existing server entries. Open your editor's MCP settings to verify the
+connection and enable Lacuna's tools for the conversation.
+
+</details>
 
 ### Hosted MCP server (Claude connector)
 
@@ -182,16 +220,58 @@ python -m pip install -U pip
 python -m pip install -e .
 ```
 
+## Research skills
+
+The MCP server provides tools. These optional skills teach your agent how to use
+them for three research tasks:
+
+| Skill | Example request |
+| --- | --- |
+| [Check prior work](skills/lacuna-prior-work/SKILL.md) | Before I implement token merging for a vision transformer, find the closest work and a baseline to include. |
+| [Trace code to papers](skills/lacuna-code-to-paper/SKILL.md) | Which paper does Dao-AILab/flash-attention implement? Show the recorded relationship and sources. |
+| [Find reading-list gaps](skills/lacuna-reading-gaps/SKILL.md) | My list has FlashAttention and FlashAttention-2. What baselines or limitations should I read about for long-context attention? |
+
+Connect the MCP server first. Then, with Node.js 22.20+ installed, run the
+[skills CLI](https://github.com/vercel-labs/skills) from your project:
+
+```bash
+npx skills add tiptreesystems/lacuna-research-mcp
+```
+
+Choose the skills and agent you use. To install only the code-to-paper workflow:
+
+```bash
+npx skills add tiptreesystems/lacuna-research-mcp --skill lacuna-code-to-paper
+```
+
+Skills install to the current project by default. They don't install or configure
+the MCP server. Start a new agent session after installation if your client needs
+one to discover new skills.
+
 ## First use
 
-After connecting the server, call:
+Ask one of the questions above in your connected agent. For a reproducible
+example with no model API key, clone this repository and run:
 
-1. `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=10)`
-2. `search_lacuna(query="methods for detecting prompt injection attacks", search_type="paper", limit=10)` (production lexical+semantic paper ranking by default)
-3. `get_hypothesis(hypothesis_id_or_url="bd35de182c2325ae")`
-4. `get_paper(artifact_id_or_url="art_79c57fbfec094f26b79c422cf08fed34")` (defaults to `view="context"`)
-5. `get_direction(cluster_id_or_url=25108)` (defaults to `view="context"`)
-6. `search_lacuna(query="ImageNet", search_type="resource", resource_kind="dataset")` (datasets linked to papers; follow up with `get_resource`)
+```bash
+uv run examples/code_to_paper.py
+```
+
+The [notebook](examples/code_to_paper.ipynb) explains each step and compares the
+source trail with a single paper search. For direct tool use, the same flow is:
+
+1. `search_lacuna(query="FlashAttention", search_type="resource", resource_kind="codebase", limit=5)`
+2. Check the repository identity, then pass its returned ID to `get_resource(resource_id_or_url=...)`.
+3. Follow a returned `publications[].paper_id` with `get_paper(artifact_id_or_url=..., view="context", figure_limit=0)`.
+
+For literature search, use `search_lacuna(query="methods for detecting prompt injection attacks", search_type="paper", limit=5)`.
+For generated proposals, use `search_lacuna(query="LLM jailbreak defense", search_type="hypothesis", limit=5)`
+and follow a returned ID with `get_hypothesis`. Generated proposals are ideas to
+investigate, not evidence of published findings.
+
+## About Lacuna
+
+[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), is a research map of machine learning: a heterogeneous knowledge graph linking papers, research directions, authors, venues, institutions, and generated research proposals, with a source trail from every derived object back to the exact paper and page that produced it. Its pipeline reconciles scholarly records from OpenAlex, OpenReview, DBLP, and arXiv; extracts concept elements from paper text and clusters them into research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)); and samples novel research proposals from those directions with [The Alien Space of Science](https://arxiv.org/abs/2603.01092). The map spans more than **2.29 million papers**, **215,000+ author profiles**, **28,000+ research directions**, **25,000+ research proposals**, and **5,300+ venues** — and it grows continuously as new arXiv and other AI papers are ingested.
 
 ## Scope
 

@@ -1,0 +1,3 @@
+recursive-include examples *.py *.ipynb *.md
+recursive-include skills SKILL.md
+recursive-include assets *.svg

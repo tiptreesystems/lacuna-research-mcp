@@ -28,7 +28,7 @@ jobs:
         run: uv sync --frozen --extra dev
 
       - name: Ruff lint
-        run: uv run ruff check lacuna_research_mcp tests
+        run: uv run ruff check lacuna_research_mcp tests examples
 
       - name: Ruff format
         run: uv run ruff format --check .
