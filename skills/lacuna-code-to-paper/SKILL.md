@@ -5,16 +5,21 @@ description: Trace an ML code repository, dataset, or model to its linked resear
 
 # Trace code to papers
 
-If Lacuna tools are unavailable, say so and stop the Lacuna lookup.
+If Lacuna tools are unavailable, point to the
+[setup instructions](https://github.com/tiptreesystems/lacuna-research-mcp#install)
+and stop the Lacuna lookup.
 
 1. Identify the resource from the user's URL or local README and dependency
    metadata. Query public resource names only; do not send private code or URLs.
-2. Use `search_lacuna` with `search_type="resource"`. Match the returned provider,
-   key, title, and URL to the intended resource; rank and stars do not establish
-   identity.
+2. Use `search_lacuna` with `search_type="resource"` and the matching
+   `resource_kind`: `"codebase"` for repositories, `"dataset"` for datasets, or
+   `"model"` for models. Match the returned provider, key, title, and URL to the
+   intended resource; rank and stars do not establish identity.
    Renames can leave old provider keys, so verify aliases against recorded URLs or
-   the original repository. If no match is established or several remain plausible,
-   show the candidates and stop before attributing papers.
+   the original repository. If no candidate matches, retry once without
+   `resource_kind`, keeping `search_type="resource"` and the same identity checks.
+   If no match is established or several remain plausible, show the candidates
+   and stop before attributing papers.
 3. Use `get_resource` to inspect `publications`, relationship labels, `evidence_url`,
    any recorded `basis`, and the collection timestamp. A README mention is not a
    recorded `official_code_for` relationship; other labels may describe different

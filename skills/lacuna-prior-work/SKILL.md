@@ -5,9 +5,12 @@ description: Search and compare prior ML/AI research for a proposed method, expe
 
 # Check prior work
 
-If Lacuna tools are unavailable, say so and stop the Lacuna lookup.
+If Lacuna tools are unavailable, point to the
+[setup instructions](https://github.com/tiptreesystems/lacuna-research-mcp#install)
+and stop the Lacuna lookup.
 
 1. Identify the proposed method, problem or mechanism, and claimed difference.
+   Query only the research concepts needed; do not send private code or documents.
    Use `search_lacuna` with `search_type="paper"`, searching by method name and
    by a description of the mechanism. Do not restrict dates unless the user requests
    a time range.
