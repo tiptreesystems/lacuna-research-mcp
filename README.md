@@ -232,13 +232,12 @@ python -m pip install -e .
 ## Research skills
 
 The MCP server provides tools. These optional skills teach your agent how to use
-them for three research tasks:
+them for two research tasks:
 
 | Skill | Example request |
 | --- | --- |
 | [Check prior work](skills/lacuna-prior-work/SKILL.md) | Before I implement token merging for a vision transformer, find the closest work and a baseline to include. |
 | [Trace code to papers](skills/lacuna-code-to-paper/SKILL.md) | Which paper does Dao-AILab/flash-attention implement? Show the recorded relationship and sources. |
-| [Find reading-list gaps](skills/lacuna-reading-gaps/SKILL.md) | My list has FlashAttention and FlashAttention-2. What baselines or limitations should I read about for long-context attention? |
 
 Connect the MCP server first. Then, with Node.js 22.20+ installed, run the
 [skills CLI](https://github.com/vercel-labs/skills) from your project:
@@ -259,8 +258,12 @@ one to discover new skills.
 
 ## First use
 
-Ask one of the questions above in your connected agent. For a reproducible
-example with no model API key, clone this repository and run:
+Ask one of the questions above in your connected agent, or try a reading-list question:
+
+> My list has FlashAttention and FlashAttention-2. What baselines or limitations
+> should I read about for long-context attention?
+
+For a reproducible example with no model API key, clone this repository and run:
 
 ```bash
 uv run examples/code_to_paper.py
