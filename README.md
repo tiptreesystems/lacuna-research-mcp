@@ -11,20 +11,29 @@
 
 # Lacuna Research MCP
 
-Find the papers behind an implementation, check prior work, and fill gaps in an
-ML reading list from your coding agent.
+[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), is a research map of machine learning: a heterogeneous knowledge graph linking papers, research directions, authors, venues, institutions, and generated research proposals, with a source trail from every derived object back to the exact paper and page that produced it.
+
+Lacuna Research MCP gives AI researchers' coding agents:
+
+- **Generated research proposals.** Explore research ideas generated with [The Alien Space of Science](https://arxiv.org/abs/2603.01092).
+- **Research directions.** Navigate concept clusters with linked papers, authors, and proposals.
+- **Agent-ready literature.** Search recent papers in markdown with source links.
+- **Researcher intelligence.** Trace authors, publications, directions, impact, and related researchers.
+- **Landscape mapping.** Compare venues, institutions, leading researchers, and publication activity.
+
+For example, trace an implementation to its recorded paper relationships:
 
 > Find the paper behind Dao-AILab/flash-attention. Show the recorded connection
 > to the repository and link the original paper.
 
-Lacuna follows **repository → recorded paper relationship → paper and sources**.
-For this example, it returns the `official_code_for` relationship to
+This example follows **repository → recorded paper relationship → paper and sources**.
+Lacuna returns the `official_code_for` relationship to
 [FlashAttention](https://lacuna.tiptreesystems.com/work/flashattention-fast-and-memory-efficient-exact-attention/version/art_15dcb323b0ad4ce28209944c81d9c45c),
 with links to the repository and original paper. Inspect those sources to verify
 the connection. [Run the example](examples/README.md) or
 [work through the notebook](examples/code_to_paper.ipynb).
 
-[Install](#install) · [Research skills](#research-skills) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis)
+[Install](#install) · [Research skills](#research-skills) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
 
 ## Install
 
@@ -271,7 +280,7 @@ investigate, not evidence of published findings.
 
 ## About Lacuna
 
-[Lacuna](https://lacuna.tiptreesystems.com), built by [Tiptree Systems](https://tiptreesystems.com), is a research map of machine learning: a heterogeneous knowledge graph linking papers, research directions, authors, venues, institutions, and generated research proposals, with a source trail from every derived object back to the exact paper and page that produced it. Its pipeline reconciles scholarly records from OpenAlex, OpenReview, DBLP, and arXiv; extracts concept elements from paper text and clusters them into research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)); and samples novel research proposals from those directions with [The Alien Space of Science](https://arxiv.org/abs/2603.01092). The map spans more than **2.29 million papers**, **215,000+ author profiles**, **28,000+ research directions**, **25,000+ research proposals**, and **5,300+ venues** — and it grows continuously as new arXiv and other AI papers are ingested.
+Lacuna's pipeline reconciles scholarly records from OpenAlex, OpenReview, DBLP, and arXiv; extracts concept elements from paper text and clusters them into research directions ([Lacuna paper](https://arxiv.org/abs/2606.26246)); and samples novel research proposals from those directions with [The Alien Space of Science](https://arxiv.org/abs/2603.01092). The map spans more than **2.29 million papers**, **215,000+ author profiles**, **28,000+ research directions**, **25,000+ research proposals**, and **5,300+ venues** — and it grows continuously as new arXiv and other AI papers are ingested.
 
 ## Scope
 
