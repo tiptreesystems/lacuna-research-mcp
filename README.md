@@ -30,8 +30,8 @@ This example follows **repository → recorded paper relationship → paper and 
 Lacuna returns the `official_code_for` relationship to
 [FlashAttention](https://lacuna.tiptreesystems.com/work/flashattention-fast-and-memory-efficient-exact-attention/version/art_15dcb323b0ad4ce28209944c81d9c45c),
 with links to the repository and original paper. Inspect those sources to verify
-the connection. [Run the example](examples/README.md) or
-[work through the notebook](examples/code_to_paper.ipynb).
+the connection. [Run the example](https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/examples/README.md) or
+[work through the notebook](https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/examples/code_to_paper.ipynb).
 
 [Install](#install) · [Research skills](#research-skills) · [First use](#first-use) · [Tools](#what-it-exposes) · [API reference](#wrapped-apis) · [Configuration](#environment-variables)
 
@@ -236,8 +236,8 @@ them for two research tasks:
 
 | Skill | Example request |
 | --- | --- |
-| [Check prior work](skills/lacuna-prior-work/SKILL.md) | Before I implement token merging for a vision transformer, find the closest work and a baseline to include. |
-| [Trace code to papers](skills/lacuna-code-to-paper/SKILL.md) | Which paper does Dao-AILab/flash-attention implement? Show the recorded relationship and sources. |
+| [Check prior work](https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/skills/lacuna-prior-work/SKILL.md) | Before I implement token merging for a vision transformer, find the closest work and a baseline to include. |
+| [Trace code to papers](https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/skills/lacuna-code-to-paper/SKILL.md) | Which paper does Dao-AILab/flash-attention implement? Show the recorded relationship and sources. |
 
 Connect the MCP server first. Then, with Node.js 22.20+ installed, run the
 [skills CLI](https://github.com/vercel-labs/skills) from your project:
@@ -269,7 +269,7 @@ For a reproducible example with no model API key, clone this repository and run:
 uv run examples/code_to_paper.py
 ```
 
-The [notebook](examples/code_to_paper.ipynb) explains each step and compares the
+The [notebook](https://github.com/tiptreesystems/lacuna-research-mcp/blob/main/examples/code_to_paper.ipynb) explains each step and compares the
 source trail with a single paper search. For direct tool use, the same flow is:
 
 1. `search_lacuna(query="FlashAttention", search_type="resource", resource_kind="codebase", limit=5)`
