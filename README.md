@@ -37,6 +37,19 @@ the connection. [Run the example](https://github.com/tiptreesystems/lacuna-resea
 
 ## Install
 
+### Agent plugin for Cursor
+
+This repository also packages the hosted MCP connection and the two
+[research skills](#research-skills) as an
+[Agent Plugin](https://agent-plugins.org/). Cursor supports this format.
+
+To test it locally, copy this repository to
+`~/.cursor/plugins/local/lacuna-research-mcp`, reload Cursor, and open
+**Customize** to check the two skills and the MCP connection. The plugin connects
+to `https://lacuna.tiptreesystems.com/api/mcp`; no local Python installation or
+Lacuna account is required. Enable either this connection or a manually configured
+Lacuna server to avoid duplicate tools.
+
 ### Cursor and VS Code
 
 Use the hosted server with no local Python installation or Lacuna account:
