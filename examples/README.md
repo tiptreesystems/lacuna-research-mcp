@@ -51,4 +51,4 @@ tools with the [code-to-paper skill](../skills/lacuna-code-to-paper/SKILL.md).
 - Use a public repository name. This example doesn't read or upload local code.
 
 See the [MCP server](https://github.com/tiptreesystems/lacuna-research-mcp) for
-installation instructions, the other research skills, and the tool reference.
+installation instructions, the other research skill, and the tool reference.
