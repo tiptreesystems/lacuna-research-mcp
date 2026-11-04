@@ -735,7 +735,13 @@ async def get_institution_context(
     institution_key_or_url: str,
     view: ContextView = "context",
 ) -> dict[str, Any]:
-    """Fetch agent-oriented context for a Lacuna institution.
+    """Fetch agent-oriented context for a Lacuna institution (a university, lab or company).
+
+    The context summarizes the institution's research output: its paper and
+    author counts and the authors who publish most often under it.
+    Affiliations come from the author affiliations listed on published papers,
+    not from staff directories, and may be incomplete or out of date. The
+    response has no contact details, biographies or employment records.
 
     view selects the response shape:
 
@@ -761,7 +767,13 @@ async def get_institution_authors(
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Fetch one page of authors affiliated with a Lacuna institution.
+    """Fetch one page of authors who list a Lacuna institution on their papers.
+
+    Each author appears because published papers list this institution as one
+    of their affiliations. This is a record of research output, not a staff
+    directory: it may be incomplete or out of date and does not show current
+    employment. Each entry has the author's name, Lacuna
+    page and paper count; there are no contact details or other personal data.
 
     Results are ordered by paper count. Use authors_total, authors_returned,
     authors_offset, and authors_truncated to page through the complete list.
