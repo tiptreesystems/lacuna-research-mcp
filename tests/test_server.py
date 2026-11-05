@@ -58,6 +58,7 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
             version: str = "",
             lifespan: Any = None,
             log_level: str | None = None,
+            subscriptions: Any = None,
         ) -> None:
             self.name = name
             self.instructions = instructions
@@ -135,6 +136,7 @@ def test_create_mcp_log_level_env_override(monkeypatch: pytest.MonkeyPatch) -> N
             version: str = "",
             lifespan: Any = None,
             log_level: str | None = None,
+            subscriptions: Any = None,
         ) -> None:
             self.log_level = log_level
 
