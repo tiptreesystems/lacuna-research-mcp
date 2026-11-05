@@ -118,6 +118,9 @@ def create_mcp() -> Any:
         version=PACKAGE_VERSION,
         lifespan=_lifespan,
         log_level=log_level,
+        # Nothing here ever changes at runtime, so listeners would wait forever.
+        # Over HTTP each listener holds a request open for its whole session.
+        subscriptions=False,
     )
     for tool_func in TOOL_FUNCTIONS:
         title = TOOL_TITLES[tool_func.__name__]
