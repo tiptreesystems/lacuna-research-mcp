@@ -12,27 +12,45 @@ from lacuna_research_mcp.config import PACKAGE_VERSION, log_level_from_env
 from lacuna_research_mcp.errors import LacunaMCPError
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS, TOOL_TITLES
 
-# Kept so the self-contained scope/workflow summary lands within the first 512
-# characters that some MCP clients (e.g. Codex) surface; the tool enumeration
-# follows after that boundary.
+# The first paragraph is a self-contained summary that fits in the first 512
+# characters, which is all some MCP clients (e.g. Codex) surface. Scope and the
+# per-question routes follow after that boundary.
 SERVER_INSTRUCTIONS = (
-    "Lacuna is a read-only knowledge graph of machine learning and AI research: "
-    "papers, research directions (clusters), authors, venues, institutions, "
-    "generated hypotheses, and paper-linked resources (code, datasets, models). "
-    "It does not cover biographies, news, or non-research "
-    "web content; answer questions outside that scope from other sources rather "
-    "than guessing. Workflow: if you have no ID or URL, call search_lacuna first, "
-    "then pass the IDs or URLs it returns to the detail tools to fetch entity "
-    "details. When a Lacuna entity materially informs an answer, cite its "
-    "canonical Lacuna URL so the user can inspect the source. For conferences "
-    "commonly known by an acronym, search using the standard acronym (for "
-    "example, NeurIPS, ICML, ICLR, CVPR, or ACL); expanded conference names may "
-    "not be indexed. All tools are read-only and never mutate state."
-    "\n\nDetail tools: get_paper, get_direction and get_direction_papers, "
-    "get_author_context, get_author_papers, get_author_directions, "
-    "get_author_neighbors, "
-    "get_venue_context, get_institution_context and get_institution_authors, "
-    "get_hypothesis, and get_resource."
+    "Lacuna is a read-only knowledge graph of machine learning and AI research "
+    "from Tiptree Systems: papers, research directions (clusters), authors, "
+    "venues, institutions, generated hypotheses, and paper-linked resources "
+    "(code, datasets, models). Workflow: call search_lacuna first, then pass the "
+    "IDs or URLs it returns to the detail tools. When a Lacuna entity materially "
+    "informs an answer, cite its canonical Lacuna URL so the user can inspect "
+    "the source. All tools are read-only and never mutate state."
+    "\n\nScope: Lacuna holds summaries and metadata. It does not hold paper full "
+    "text or reference lists, and it does not cover biographies, news, or "
+    "non-research web content; answer those from other sources rather than "
+    "guessing. For conferences commonly known by an acronym, search using the "
+    "standard acronym (for example, NeurIPS, ICML, ICLR, CVPR, or ACL); expanded "
+    "conference names may not be indexed."
+    "\n\nChoose the route by the question. When the question is about people or "
+    "a field, do not stop at a list of papers:"
+    "\n- One known paper (arXiv ID, DOI, or an arXiv, DOI or OpenReview URL): "
+    "get_paper accepts these directly."
+    '\n- Literature on a topic: search_lacuna(search_type="paper"), then '
+    "get_paper on the few results that matter."
+    '\n- Who works on a topic: search_lacuna(search_type="cluster") to find the '
+    "research direction, then get_direction for its leading authors. Use "
+    "get_author_context for one person and get_author_neighbors for similar "
+    "researchers."
+    "\n- What a university, lab or company publishes: "
+    'search_lacuna(search_type="institution"), then get_institution_context.'
+    '\n- What a venue published: search_lacuna(search_type="venue"), then '
+    "get_venue_context, optionally for one year."
+    "\n- Where a field is heading: get_direction for the map of a direction and "
+    'its neighbors; search_lacuna(search_type="hypothesis") and get_hypothesis '
+    "for open research ideas."
+    '\n- Code, datasets or models: search_lacuna(search_type="resource"), then '
+    "get_resource for the papers that use them."
+    "\n\nKeep calls small. Default views are compact; request a full view only "
+    "when a field you need is missing. One well-phrased search is better than "
+    "several paraphrases of it."
 )
 
 

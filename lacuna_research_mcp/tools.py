@@ -15,6 +15,7 @@ from lacuna_research_mcp.config import (
 )
 from lacuna_research_mcp.errors import RESOURCE_LOOKUP_HINT, LacunaMCPError
 from lacuna_research_mcp.ids import (
+    external_paper_identifier,
     extract_cluster_id,
     extract_hypothesis_id,
     extract_paper_id,
@@ -265,6 +266,17 @@ async def search_lacuna(
     venues, institutions, novel research hypotheses, and research resources
     (code repositories, datasets, models, and demos linked to papers).
 
+    Start here for any question without an ID. Set search_type to what the
+    question is about: paper for literature; cluster for a research direction
+    ("who works on X", "what is the state of X"); author, institution or venue
+    for a person, a lab or a conference; hypothesis for open research ideas;
+    resource for code, datasets and models. Then pass a result's id or url to
+    the matching detail tool.
+
+    A query that is an arXiv ID, a DOI, or an arXiv, DOI or OpenReview URL
+    returns that exact paper. Paper results carry `identifiers` (arXiv ID, DOI,
+    OpenReview URL where known), which other research tools accept.
+
     For novel ML/AI research ideas, use search_type="hypothesis", then
     get_hypothesis on promising results.
 
@@ -419,6 +431,25 @@ def _filter_embedded_papers(value: Any) -> Any:
     return result
 
 
+async def _resolve_external_paper(identifier: str) -> str:
+    """Return the Lacuna artifact ID for an arXiv ID, DOI or arXiv/DOI/OpenReview URL."""
+    identifier = identifier.strip()
+    payload = await api_payload(
+        "/api/v1/search", params={"q": identifier, "type": "paper", "limit": 1}
+    )
+    results = payload.get("results") or []
+    # The API marks an identifier hit; anything else is only a text match.
+    if results and results[0].get("matched_identifier"):
+        artifact_id = results[0].get("artifact_id") or results[0].get("id")
+        if artifact_id:
+            return str(artifact_id)
+    raise ValueError(
+        f"No Lacuna paper matches {identifier!r}. Lacuna covers ML/AI research; "
+        "the paper may be outside that corpus or not yet indexed. Try "
+        "search_lacuna with the paper's title."
+    )
+
+
 async def _paper_payload(
     artifact_id_or_url: str,
     route_template: str,
@@ -472,7 +503,12 @@ async def get_direction(
     cluster_id_or_url: str | int,
     view: DirectionView = "context",
 ) -> dict[str, Any]:
-    """Fetch a Lacuna research direction/cluster.
+    """Describe one research direction: what it is, who leads it, what is nearby.
+
+    Use for "who works on X", "what is the state of X" and "what is adjacent to
+    X", after search_lacuna(search_type="cluster") finds the direction. The
+    context names the direction's leading authors, key papers and related
+    directions.
 
     Use a numeric cluster ID (for example 25005) or a direction URL ending in
     that number.
@@ -531,7 +567,13 @@ async def get_paper(
     figure_limit: int | None = None,
     include_resources: bool = True,
 ) -> dict[str, Any]:
-    """Fetch a Lacuna paper by artifact id or paper URL.
+    """Fetch one paper: its summary, authors, venue, figures and linked resources.
+
+    Accepts a Lacuna artifact ID or paper URL from search_lacuna, or an outside
+    identifier for the same paper: an arXiv ID (2310.06825), a DOI, or an
+    arXiv, DOI or OpenReview URL. Use this when the user names a specific paper
+    or after a search. A paper that is not in Lacuna's ML/AI corpus returns an
+    error saying so. Lacuna returns a summary, not the paper's full text.
 
     include_resources adds linked resources (code repositories, datasets, models,
     and demos) in context and full views by default. Pass False to omit them;
@@ -570,6 +612,8 @@ async def get_paper(
             if figure_limit < 0:
                 raise ValueError("figure_limit must be greater than or equal to 0")
             params["figure_limit"] = figure_limit
+    if external_paper_identifier(artifact_id_or_url) is not None:
+        artifact_id_or_url = await _resolve_external_paper(artifact_id_or_url)
     work_id = extract_work_page_id(artifact_id_or_url)
     if work_id is not None:
         context = await api_payload(
@@ -617,7 +661,11 @@ async def get_author_papers(
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Fetch one page of an author's papers, ordered from newest to oldest."""
+    """List what one author has published, newest first, one page at a time.
+
+    Use for "what has X worked on recently". Pass an author id or URL from
+    search_lacuna(search_type="author") or from any paper's author list.
+    """
     _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
     author_id = extract_route_key(author_id_or_url, "author")
     payload = await api_payload(
@@ -633,7 +681,11 @@ async def get_author_directions(
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Fetch one page of an author's named research directions."""
+    """List the research directions one author publishes in, one page at a time.
+
+    Use for "what areas does X work in" or to check whether a person is active
+    in a given direction. Pass an author id or URL.
+    """
     _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
     author_id = extract_route_key(author_id_or_url, "author")
     payload = await api_payload(
@@ -649,7 +701,9 @@ async def get_author_context(
     view: ContextView = "context",
     include_neighbors: bool = False,
 ) -> dict[str, Any]:
-    """Fetch agent-oriented context for a Lacuna author.
+    """Profile one researcher: their main papers and the directions they shaped.
+
+    Use for "who is X in research terms" or "what is X known for".
 
     Author profiles describe research output (papers, directions, impact). A
     free-text `affiliation` field may be present but can be incomplete or
@@ -686,7 +740,11 @@ async def get_author_neighbors(
     limit: int = DEFAULT_AUTHOR_NEIGHBORS_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Fetch one ranked page of neighboring/similar Lacuna authors."""
+    """List researchers whose work is closest to one author's, ranked.
+
+    Use for "who else works on what X works on": finding possible
+    collaborators, reviewers or related groups. Pass an author id or URL.
+    """
     _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
     author_id = extract_route_key(author_id_or_url, "author")
     payload = await api_payload(
@@ -702,7 +760,9 @@ async def get_venue_context(
     year: int | None = None,
     view: ContextView = "context",
 ) -> dict[str, Any]:
-    """Fetch agent-oriented context for a Lacuna venue, optionally scoped to a year.
+    """Describe a conference or journal: its top authors and directions, by year.
+
+    Use for "what did NeurIPS 2025 focus on" or "who publishes most at X".
 
     Venue keys are opaque hashes (e.g. "d7bf22905bd6"), never human-readable
     names like "icml". Find the key first via search_lacuna(search_type="venue")
@@ -735,7 +795,9 @@ async def get_institution_context(
     institution_key_or_url: str,
     view: ContextView = "context",
 ) -> dict[str, Any]:
-    """Fetch agent-oriented context for a Lacuna institution (a university, lab or company).
+    """Describe the research output of a university, lab or company.
+
+    Use for "what does X publish" or "who are the most active authors at X".
 
     The context summarizes the institution's research output: its paper and
     author counts and the authors who publish most often under it.

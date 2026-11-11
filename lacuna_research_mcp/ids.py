@@ -147,3 +147,27 @@ def extract_venue_key_year(value: str, year: int | None = None) -> tuple[str, in
     if _looks_like_url_or_path(value):
         raise ValueError(f"Invalid venue key/year or URL: {value!r}")
     return value, year
+
+
+_ARXIV_ID = r"(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?/\d{7})(?:v\d+)?"
+_EXTERNAL_PAPER_PATTERNS = (
+    re.compile(rf"(?:arxiv:\s*)?{_ARXIV_ID}", re.IGNORECASE),
+    re.compile(r"(?:doi:\s*)?10\.\d{4,9}/\S+", re.IGNORECASE),
+    re.compile(
+        r"https?://(?:www\.)?(?:arxiv\.org/(?:abs|pdf|html)/|(?:dx\.)?doi\.org/10\.|"
+        r"openreview\.net/(?:forum|pdf)\?id=)\S+",
+        re.IGNORECASE,
+    ),
+)
+
+
+def external_paper_identifier(value: str) -> str | None:
+    """Return value when it is an arXiv ID, a DOI, or an arXiv/DOI/OpenReview URL.
+
+    These name a paper outside Lacuna, so the caller resolves them through
+    search rather than treating them as a Lacuna artifact ID or page URL.
+    """
+    value = value.strip()
+    if any(pattern.fullmatch(value) for pattern in _EXTERNAL_PAPER_PATTERNS):
+        return value
+    return None
