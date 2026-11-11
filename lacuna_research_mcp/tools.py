@@ -216,7 +216,12 @@ _PAPER_VIEW_ROUTES: dict[str, str] = {
     "figures": "/api/v1/papers/{artifact_id}/figures",
     "concepts": "/api/v1/papers/{artifact_id}/concepts",
     "neighbors": "/api/v1/papers/{artifact_id}/neighbors",
+    "references": "/api/v1/papers/{artifact_id}/references",
+    "citations": "/api/v1/papers/{artifact_id}/citations",
+    "fulltext": "/api/v1/papers/{artifact_id}/fulltext",
 }
+# Largest page the references and citations routes accept.
+PAPER_REFERENCES_MAX_LIMIT = 100
 
 _DIRECTION_VIEW_ROUTES: dict[str, str] = {
     "context": "/api/v1/context/direction/{cluster_id}",
@@ -240,7 +245,18 @@ def _normalize_view(view: str, routes: dict[str, str]) -> str:
     raise ValueError(f"Invalid view {view!r}. Valid values: {valid_values}")
 
 
-PaperView = Literal["context", "full", "preview", "blog", "figures", "concepts", "neighbors"]
+PaperView = Literal[
+    "context",
+    "full",
+    "preview",
+    "blog",
+    "figures",
+    "concepts",
+    "neighbors",
+    "references",
+    "citations",
+    "fulltext",
+]
 DirectionView = Literal["context", "full"]
 HypothesisView = Literal["context", "full"]
 ContextView = Literal["context", "full"]
@@ -566,14 +582,19 @@ async def get_paper(
     view: PaperView = "context",
     figure_limit: int | None = None,
     include_resources: bool = True,
+    offset: int = 0,
+    limit: int | None = None,
+    max_chars: int | None = None,
 ) -> dict[str, Any]:
-    """Fetch one paper: its summary, authors, venue, figures and linked resources.
+    """Fetch one paper: its summary, authors, venue, figures, linked resources,
+    reference list, citing papers, or full text.
 
     Accepts a Lacuna artifact ID or paper URL from search_lacuna, or an outside
     identifier for the same paper: an arXiv ID (2310.06825), a DOI, or an
     arXiv, DOI or OpenReview URL. Use this when the user names a specific paper
     or after a search. A paper that is not in Lacuna's ML/AI corpus returns an
-    error saying so. Lacuna returns a summary, not the paper's full text.
+    error saying so. The default view is a summary; ask for the full text or
+    the reference list only when the summary does not answer the question.
 
     include_resources adds linked resources (code repositories, datasets, models,
     and demos) in context and full views by default. Pass False to omit them;
@@ -597,6 +618,18 @@ async def get_paper(
     - "figures": just the figures list.
     - "concepts": just the concepts list.
     - "neighbors": just the related-papers list.
+    - "references": the papers this paper cites. "citations": the papers that
+      cite it. Both come from Semantic Scholar, `limit` at a time (default 50,
+      at most 100) from `offset`; pass the returned `next_offset` for the next
+      page. An entry Lacuna also holds has a `lacuna` block whose id works in
+      get_paper.
+    - "fulltext": text extracted from the paper's PDF, `max_chars` at a time
+      (default 40,000, at most 100,000) from `offset`; pass the returned
+      `next_offset` to keep reading. Pages are marked "[page N]". Equations
+      and tables can be garbled, and a scanned paper has no text.
+
+    An error that says to try again (rate limit, Semantic Scholar busy) can be
+    retried once after a few seconds.
 
     figure_limit (context view only) caps the figure preview (server default 3).
     Pass 0 to suppress figure previews while keeping a `figures_truncated` signal.
@@ -612,6 +645,16 @@ async def get_paper(
             if figure_limit < 0:
                 raise ValueError("figure_limit must be greater than or equal to 0")
             params["figure_limit"] = figure_limit
+    if offset < 0:
+        raise ValueError("offset must be greater than or equal to 0")
+    if normalized_view in {"references", "citations"}:
+        params = {"offset": offset}
+        if limit is not None:
+            params["limit"] = max(1, min(limit, PAPER_REFERENCES_MAX_LIMIT))
+    elif normalized_view == "fulltext":
+        params = {"offset": offset}
+        if max_chars is not None:
+            params["max_chars"] = max_chars
     if external_paper_identifier(artifact_id_or_url) is not None:
         artifact_id_or_url = await _resolve_external_paper(artifact_id_or_url)
     work_id = extract_work_page_id(artifact_id_or_url)

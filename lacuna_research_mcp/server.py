@@ -23,8 +23,7 @@ SERVER_INSTRUCTIONS = (
     "IDs or URLs it returns to the detail tools. When a Lacuna entity materially "
     "informs an answer, cite its canonical Lacuna URL so the user can inspect "
     "the source. All tools are read-only and never mutate state."
-    "\n\nScope: Lacuna holds summaries and metadata. It does not hold paper full "
-    "text or reference lists, and it does not cover biographies, news, or "
+    "\n\nScope: ML and AI research. Lacuna does not cover biographies, news, or "
     "non-research web content; answer those from other sources rather than "
     "guessing. For conferences commonly known by an acronym, search using the "
     "standard acronym (for example, NeurIPS, ICML, ICLR, CVPR, or ACL); expanded "
@@ -32,7 +31,9 @@ SERVER_INSTRUCTIONS = (
     "\n\nChoose the route by the question. When the question is about people or "
     "a field, do not stop at a list of papers:"
     "\n- One known paper (arXiv ID, DOI, or an arXiv, DOI or OpenReview URL): "
-    "get_paper accepts these directly."
+    "get_paper accepts these directly. Its default view is a summary; "
+    'view="fulltext" reads the paper itself, and view="references" or '
+    'view="citations" lists what it cites or what cites it.'
     '\n- Literature on a topic: search_lacuna(search_type="paper"), then '
     "get_paper on the few results that matter."
     '\n- Who works on a topic: search_lacuna(search_type="cluster") to find the '
