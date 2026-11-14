@@ -441,9 +441,24 @@ def _filter_embedded_papers(value: Any) -> Any:
     return result
 
 
-async def _resolve_external_paper(identifier: str) -> str:
-    """Return the Lacuna artifact ID for an arXiv ID, DOI or arXiv/DOI/OpenReview URL."""
-    identifier = identifier.strip()
+def _paper_not_found(identifier: str) -> dict[str, Any]:
+    # A paper outside the corpus is an answer, not a failure of the tool.
+    return {
+        "found": False,
+        "identifier": identifier,
+        "message": (
+            f"No Lacuna paper matches {identifier!r}. Lacuna covers ML/AI research; "
+            "the paper may be outside that corpus or not yet indexed. Try "
+            "search_lacuna with the paper's title."
+        ),
+    }
+
+
+async def _resolve_external_paper(identifier: str) -> str | None:
+    """Return the Lacuna artifact ID for an arXiv ID, DOI or arXiv/DOI/OpenReview URL.
+
+    Returns None when Lacuna has no paper with that identifier.
+    """
     payload = await api_payload(
         "/api/v1/search", params={"q": identifier, "type": "paper", "limit": 1}
     )
@@ -453,11 +468,7 @@ async def _resolve_external_paper(identifier: str) -> str:
         artifact_id = results[0].get("artifact_id") or results[0].get("id")
         if artifact_id:
             return str(artifact_id)
-    raise ValueError(
-        f"No Lacuna paper matches {identifier!r}. Lacuna covers ML/AI research; "
-        "the paper may be outside that corpus or not yet indexed. Try "
-        "search_lacuna with the paper's title."
-    )
+    return None
 
 
 async def _paper_payload(
@@ -585,9 +596,10 @@ async def get_paper(
     Accepts a Lacuna artifact ID or paper URL from search_lacuna, or an outside
     identifier for the same paper: an arXiv ID (2310.06825), a DOI, or an
     arXiv, DOI or OpenReview URL. Use this when the user names a specific paper
-    or after a search. A paper that is not in Lacuna's ML/AI corpus returns an
-    error saying so. The default view is a summary; ask for the full text only
-    when the summary does not answer the question.
+    or after a search. For an outside identifier that is not in Lacuna's ML/AI
+    corpus, the result is `found: false` with a note saying so. The default
+    view is a summary; ask for the full text only when the summary does not
+    answer the question.
 
     include_resources adds linked resources (code repositories, datasets, models,
     and demos) in context and full views by default. Pass False to omit them;
@@ -639,7 +651,11 @@ async def get_paper(
         if max_chars is not None:
             params["max_chars"] = max_chars
     if external_paper_identifier(artifact_id_or_url) is not None:
-        artifact_id_or_url = await _resolve_external_paper(artifact_id_or_url)
+        identifier = artifact_id_or_url.strip()
+        resolved = await _resolve_external_paper(identifier)
+        if resolved is None:
+            return _paper_not_found(identifier)
+        artifact_id_or_url = resolved
     work_id = extract_work_page_id(artifact_id_or_url)
     if work_id is not None:
         context = await api_payload(
