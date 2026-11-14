@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "lacuna-research-mcp",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "Search Lacuna's ML research graph for papers, directions, authors, venues, and hypotheses.",
   "author": {
     "name": "Tiptree Advanced Systems Corporation",
