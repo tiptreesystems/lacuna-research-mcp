@@ -10,6 +10,7 @@ from typing import Any
 from lacuna_research_mcp.client import close_http_client, configure_runtime_from_env
 from lacuna_research_mcp.config import PACKAGE_VERSION, log_level_from_env
 from lacuna_research_mcp.errors import LacunaMCPError
+from lacuna_research_mcp.prompts import PROMPT_FUNCTIONS, PROMPT_TITLES
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS, TOOL_TITLES
 
 # The first paragraph is a self-contained summary that fits in the first 512
@@ -146,6 +147,8 @@ def create_mcp() -> Any:
         app.tool(title=title, annotations=_read_only_tool_annotations(title))(
             _with_tool_errors(tool_func)
         )
+    for prompt_func in PROMPT_FUNCTIONS:
+        app.prompt(title=PROMPT_TITLES[prompt_func.__name__])(prompt_func)
     return app
 
 
