@@ -23,6 +23,7 @@ from lacuna_research_mcp.ids import (
     extract_route_key,
     extract_venue_key_year,
     extract_work_page_id,
+    is_web_url,
     path_segment,
 )
 
@@ -454,6 +455,33 @@ def _paper_not_found(identifier: str) -> dict[str, Any]:
     }
 
 
+def _paper_url_not_recognized(url: str) -> dict[str, Any]:
+    # A paper page on another site is a lookup that found nothing, not a bad call.
+    return {
+        "found": False,
+        "identifier": url,
+        "message": (
+            f"get_paper cannot look up {url!r}. It reads Lacuna paper URLs and "
+            "arXiv, DOI and OpenReview URLs. For a paper page on another site, "
+            "call search_lacuna with the paper's title, or pass its arXiv ID or DOI."
+        ),
+    }
+
+
+def _fulltext_unavailable(artifact_id: str, detail: str | None) -> dict[str, Any]:
+    # A paper Lacuna has no text for is an answer, not a failure of the tool.
+    reason = detail or "Lacuna holds no text for this paper."
+    return {
+        "available": False,
+        "artifact_id": artifact_id,
+        "view": "fulltext",
+        "message": (
+            f"{reason} The default view still has Lacuna's summary, and its "
+            "identifiers (DOI, arXiv ID) point to the publisher's copy."
+        ),
+    }
+
+
 async def _resolve_external_paper(identifier: str) -> str | None:
     """Return the Lacuna artifact ID for an arXiv ID, DOI or arXiv/DOI/OpenReview URL.
 
@@ -623,12 +651,16 @@ async def get_paper(
     - "figures": just the figures list.
     - "concepts": just the concepts list.
     - "neighbors": just the related-papers list.
-    - "fulltext": the paper itself, `max_chars` at a time (default 40,000, at
-      most 100,000) from `offset`; pass the returned `next_offset` to keep
-      reading. `format` says what you got: "latex" is the arXiv LaTeX source
-      without its bibliography (citations appear as \\cite keys); "pdf_text"
-      is text extracted from the PDF, where equations and tables can be
-      garbled. A scanned paper has no text.
+    - "fulltext": the paper itself, `max_chars` at a time (default 40,000;
+      1,000 to 100,000, other values are moved into that range) from
+      `offset`; pass the returned `next_offset` to keep reading.
+      `total_chars` is the length of the whole text, and an `offset` past it
+      returns empty text. `format` says what you got: "latex" is the arXiv
+      LaTeX source without its bibliography (citations appear as \\cite
+      keys); "pdf_text" is text extracted from the PDF, where equations and
+      tables can be garbled. Lacuna holds text for most arXiv papers and for
+      fewer papers known only by DOI; a paper without text returns
+      `available: false`.
 
     figure_limit (context view only) caps the figure preview (server default 3).
     Pass 0 to suppress figure previews while keeping a `figures_truncated` signal.
@@ -666,7 +698,18 @@ async def get_paper(
         if normalized_view == "context":
             return _filter_embedded_papers(context)
         artifact_id_or_url = context["artifact_id"]
-    return await _paper_payload(artifact_id_or_url, route_template, params=params)
+    try:
+        artifact_id = extract_paper_id(artifact_id_or_url)
+    except ValueError:
+        if is_web_url(artifact_id_or_url):
+            return _paper_url_not_recognized(artifact_id_or_url.strip())
+        raise
+    try:
+        return await _paper_payload(artifact_id, route_template, params=params)
+    except LacunaMCPError as exc:
+        if normalized_view == "fulltext" and exc.reason == "fulltext_unavailable":
+            return _fulltext_unavailable(artifact_id, exc.detail)
+        raise
 
 
 async def get_resource(resource_id_or_url: str) -> dict[str, Any]:

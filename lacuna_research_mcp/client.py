@@ -163,6 +163,21 @@ def _response_excerpt(response: httpx.Response) -> str:
     return text[:300]
 
 
+def _error_body_fields(response: httpx.Response) -> tuple[str | None, str | None]:
+    """The `reason` and `detail` strings of a JSON error body, where present."""
+    try:
+        body = response.json()
+    except ValueError:
+        return None, None
+    if not isinstance(body, dict):
+        return None, None
+    reason, detail = body.get("reason"), body.get("detail")
+    return (
+        reason if isinstance(reason, str) else None,
+        detail if isinstance(detail, str) else None,
+    )
+
+
 @dataclass(frozen=True)
 class _RequestAttempt:
     response: httpx.Response | None
@@ -301,7 +316,8 @@ def _raise_for_status(response: httpx.Response) -> None:
         excerpt = _response_excerpt(error_response)
         message = f"Lacuna API request failed with {status} for {response_url}: {excerpt}"
         logger.error(message)
-        raise LacunaMCPError(message, status_code=status) from exc
+        reason, detail = _error_body_fields(error_response)
+        raise LacunaMCPError(message, status_code=status, reason=reason, detail=detail) from exc
 
 
 def _parse_json_response(response: httpx.Response, config: RuntimeConfig) -> Any:

@@ -18,6 +18,10 @@ def _looks_like_url_or_path(value: str) -> bool:
     return value.startswith("/") or bool(parsed.netloc) or "://" in value
 
 
+def is_web_url(value: str) -> bool:
+    return urlparse(value.strip()).scheme in {"http", "https"}
+
+
 def extract_hypothesis_id(value: str) -> str:
     value = value.strip()
     match = re.search(r"/hypothesis/([^/?#]+)", value)
