@@ -15,9 +15,14 @@ VIEW_MIME_TYPE = "text/html;profile=mcp-app"
 
 PAPER_CARD_URI = "ui://lacuna-research/paper-card"
 
-# The view loads the MCP Apps client from this origin; a host blocks every
-# origin a view does not declare.
-_VIEW_SCRIPT_ORIGIN = "https://unpkg.com"
+# A host blocks every origin a view does not declare. The card loads the MCP
+# Apps client from the first; paper figures come from Lacuna, which redirects
+# each one to its media host.
+_VIEW_RESOURCE_ORIGINS = [
+    "https://unpkg.com",
+    "https://lacuna.tiptreesystems.com",
+    "https://media.lacuna.tiptreesystems.com",
+]
 
 
 def paper_card_html() -> str:
@@ -32,7 +37,9 @@ def view_tool_meta(resource_uri: str) -> dict[str, Any]:
 
 def view_resource_meta() -> dict[str, Any]:
     """Resource ``_meta`` for a view: what its sandbox may load, and its frame."""
-    return {"ui": {"csp": {"resourceDomains": [_VIEW_SCRIPT_ORIGIN]}, "prefersBorder": False}}
+    return {
+        "ui": {"csp": {"resourceDomains": list(_VIEW_RESOURCE_ORIGINS)}, "prefersBorder": False}
+    }
 
 
 # Tool name -> the view that renders its result.
