@@ -12,6 +12,8 @@
     font-size: var(--font-text-sm-size, 14px);
     line-height: var(--font-text-sm-line-height, 1.4);
     color: var(--color-text-primary, light-dark(#141413, #faf9f5));
+    /* The host reports the edges its own controls cover, such as the reply box. */
+    padding: var(--inset-top, 0px) var(--inset-right, 0px) var(--inset-bottom, 0px) var(--inset-left, 0px);
   }
   .card {
     box-sizing: border-box;
@@ -93,7 +95,8 @@
   /* Expanded: the side panel or full screen. The page scrolls; the card is the page. */
   body.expanded .card {
     border: none; border-radius: 0; background: transparent;
-    max-width: 760px; margin: 0 auto; padding: 20px;
+    /* The bottom padding keeps the last lines clear of Claude's reply box. */
+    max-width: 760px; margin: 0 auto; padding: 20px 20px 96px;
   }
   body.expanded h1 { font-size: var(--font-heading-xl-size, 24px); line-height: 1.25; }
   body.expanded .figures { gap: 12px; margin: 16px 0; }
@@ -429,6 +432,10 @@
     const expanded = context?.displayMode === "fullscreen";
     const canExpand = context?.availableDisplayModes?.includes("fullscreen") ?? false;
     document.body.classList.toggle("expanded", expanded);
+    for (const edge of ["top", "right", "bottom", "left"]) {
+      const inset = Number(context?.safeAreaInsets?.[edge]) || 0;
+      document.body.style.setProperty(`--inset-${edge}`, `${inset}px`);
+    }
     // Expanded, a summary that embeds its figures shows them where it puts them.
     const inPlace = expanded && hasArticle && articleHasFigures;
     const shown = inPlace ? [] : expanded ? figures.slice(0, 1) : figures.slice(0, INLINE_FIGURES);
