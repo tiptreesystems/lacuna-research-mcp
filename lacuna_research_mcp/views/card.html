@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Lacuna Research paper</title>
+<title>Lacuna Research</title>
 <style>
   html, body { margin: 0; background: transparent; }
   body {
@@ -42,6 +42,13 @@
     font-weight: var(--font-weight-semibold, 600);
     overflow-wrap: anywhere;
   }
+  /* An author's photo sits beside the name. */
+  .head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 2px; }
+  .headline { min-width: 0; flex: 1; }
+  .photo {
+    width: 44px; height: 44px; flex: none; border-radius: 50%; object-fit: cover;
+    background: var(--color-background-secondary, light-dark(#f5f4ed, #262624));
+  }
   .byline {
     margin: 0 0 8px;
     color: var(--color-text-secondary, light-dark(#3d3d3a, #c2c0b6));
@@ -69,6 +76,17 @@
     color: var(--color-text-tertiary, light-dark(#73726c, #9c9a92));
     overflow-wrap: anywhere;
   }
+  .listing { margin: 0 0 12px; }
+  .listing h2 {
+    margin: 0 0 4px;
+    font-size: var(--font-text-xs-size, 12px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text-secondary, light-dark(#3d3d3a, #c2c0b6));
+  }
+  .listing ul { list-style: none; margin: 0; padding: 0; }
+  .listing li { padding: 2px 0; overflow-wrap: anywhere; }
+  .listing .where { color: var(--color-text-tertiary, light-dark(#73726c, #9c9a92)); }
+  a { color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   button {
     font: inherit; cursor: pointer; min-height: 44px; padding: 0 14px;
@@ -99,6 +117,13 @@
     max-width: 760px; margin: 0 auto; padding: 20px 20px 96px;
   }
   body.expanded h1 { font-size: var(--font-heading-xl-size, 24px); line-height: 1.25; }
+  body.expanded .photo { width: 64px; height: 64px; }
+  body.expanded .listing { font-size: var(--font-text-md-size, 16px); line-height: 1.55; margin: 0; }
+  body.expanded .listing h2 {
+    font-size: var(--font-heading-lg-size, 20px); line-height: 1.25; margin: 24px 0 8px;
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-primary, light-dark(#141413, #faf9f5));
+  }
   body.expanded .figures { gap: 12px; margin: 16px 0; }
   body.expanded figure img { height: 220px; }
   body.expanded #figures figure img { height: 320px; }
@@ -139,20 +164,27 @@
     </svg>
     <span>Lacuna Research</span>
   </div>
-  <div id="loading" class="skeleton" aria-label="Loading paper">
+  <div id="loading" class="skeleton" aria-label="Loading">
     <span></span><span></span><span></span><span></span>
   </div>
-  <div id="paper" hidden>
-    <h1 id="title"></h1>
-    <p id="byline" class="byline"></p>
+  <div id="entity" hidden>
+    <div class="head">
+      <img id="photo" class="photo" alt="" hidden>
+      <div class="headline">
+        <h1 id="title"></h1>
+        <p id="byline" class="byline"></p>
+      </div>
+    </div>
     <p id="summary" class="summary"></p>
     <div id="figures" class="figures" hidden></div>
-    <div class="actions">
+    <div id="short-list" hidden></div>
+    <div id="actions" class="actions">
       <button id="open" class="primary" type="button">Open on Lacuna</button>
       <button id="expand" class="quiet" type="button" hidden>Read the summary</button>
     </div>
     <div id="article" class="article" hidden></div>
     <div id="more-figures" class="figures" hidden></div>
+    <div id="full-list" hidden></div>
   </div>
 </div>
 <script type="module">
@@ -165,6 +197,7 @@
 
   const $ = (id) => document.getElementById(id);
   const LACUNA_ORIGIN = "https://lacuna.tiptreesystems.com";
+  const MEDIA_ORIGIN = "https://media.lacuna.tiptreesystems.com";
   const INLINE_FIGURES = 2;
   const EXPANDED_FIGURES = 6;
   const VENUE_NAMES = {
@@ -174,13 +207,27 @@
   };
 
   // Only links and images on Lacuna itself are used, whatever the tool result holds.
-  const lacunaUrl = (value) => {
+  const urlOn = (value, origins) => {
     try {
       const url = new URL(value);
-      return url.origin === LACUNA_ORIGIN ? url.href : null;
+      return origins.includes(url.origin) ? url.href : null;
     } catch {
       return null;
     }
+  };
+  const lacunaUrl = (value) => urlOn(value, [LACUNA_ORIGIN]);
+  const photoUrl = (value) => urlOn(value, [LACUNA_ORIGIN, MEDIA_ORIGIN]);
+
+  // A link to a Lacuna page. The host opens it; the frame itself cannot navigate.
+  const linkNode = (text, url) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.textContent = text;
+    link.onclick = (event) => {
+      event.preventDefault();
+      app.openLink({ url });
+    };
+    return link;
   };
 
   const plainText = (markdown) =>
@@ -279,7 +326,8 @@
       .replace(/\s+/g, " ")
       .trim();
 
-  // Bold, italic, code and maths become elements; links keep their text only.
+  // Bold, italic, code and maths become elements. A link to Lacuna stays a
+  // link; any other keeps its text only.
   const appendInline = (parent, text) => {
     const pattern =
       /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|\[[^\]]+\]\([^)]*\)|\$\$[^$]+\$\$|\$[^\s$](?:[^$]*[^\s$])?\$)/;
@@ -299,7 +347,9 @@
         node = document.createElement("em");
         appendInline(node, part.slice(1, -1));
       } else if (part.startsWith("[") && part.endsWith(")")) {
-        node = document.createTextNode(part.slice(1, part.indexOf("](")));
+        const text = part.slice(1, part.indexOf("]("));
+        const url = lacunaUrl(part.slice(part.indexOf("](") + 2, -1));
+        node = url ? linkNode(text, url) : document.createTextNode(text);
       } else {
         node = document.createTextNode(part);
       }
@@ -338,17 +388,20 @@
     $("article").replaceChildren(...nodes);
   };
 
+  const venueAndYear = (paper) => {
+    const venueKey = [paper.conference, paper.venue].find((value) => typeof value === "string") ?? "";
+    const label = typeof paper.venue_label === "string" ? paper.venue_label : "";
+    const venue = label || (VENUE_NAMES[venueKey.toLowerCase()] ?? venueKey);
+    return [venue, paper.year].filter(Boolean).join(" ");
+  };
+
   const byline = (paper) => {
     const names = (Array.isArray(paper.authors) ? paper.authors : [])
       .map((author) => (typeof author === "string" ? author : author?.name))
       .filter((name) => typeof name === "string");
     const shown = names.slice(0, 3).join(", ");
     const authors = names.length > 3 ? `${shown} and ${names.length - 3} more` : shown;
-    const venueKey = typeof paper.conference === "string" ? paper.conference : "";
-    const label = typeof paper.venue_label === "string" ? paper.venue_label : "";
-    const venue = label || (VENUE_NAMES[venueKey.toLowerCase()] ?? venueKey);
-    const where = [venue, paper.year].filter(Boolean).join(" ");
-    return [authors, where].filter(Boolean).join(" · ");
+    return [authors, venueAndYear(paper)].filter(Boolean).join(" · ");
   };
 
   const figureLabel = (figure) =>
@@ -412,12 +465,15 @@
   };
 
   const app = new App(
-    { name: "Lacuna Research paper card", version: "1.0.0" },
+    { name: "Lacuna Research card", version: "1.0.0" },
     { availableDisplayModes: ["inline", "fullscreen"] },
   );
-  let paperUrl = null;
+
+  // What the card shows, built from one tool result by describe() below:
+  // title, byline, summary, photo, url, blocks (the long text), sections
+  // (titled lists of rows), and how many rows the card in the conversation shows.
+  let card = null;
   let figures = [];
-  let hasArticle = false;
   let articleHasFigures = false;
 
   const setText = (id, text) => {
@@ -425,8 +481,202 @@
     $(id).hidden = !text;
   };
 
-  // The card shows the short summary and two figures. Expanded, it shows the
-  // whole summary with its figures.
+  const count = (value, one, many) =>
+    Number.isInteger(value) ? `${value.toLocaleString("en")} ${value === 1 ? one : many}` : "";
+  const text = (value) => (typeof value === "string" ? value : "");
+  const LABELS = { github: "GitHub", huggingface: "Hugging Face", arxiv: "arXiv" };
+  const label = (value) =>
+    LABELS[text(value).toLowerCase()] ??
+    text(value).replace(/_/g, " ").replace(/^./, (first) => first.toUpperCase());
+
+  // Rows of a list: the text, a quieter note after it, and its page on Lacuna.
+  const rows = (items, name, note, url) =>
+    (Array.isArray(items) ? items : [])
+      .filter((item) => item && typeof item === "object" && text(name(item)))
+      .map((item) => ({
+        text: name(item),
+        note: note ? note(item) : "",
+        url: lacunaUrl(url ? url(item) : item.url),
+      }));
+  const paperPage = (paper) =>
+    paper.url ?? (text(paper.paper_id) ? `${LACUNA_ORIGIN}/paper/${paper.paper_id}` : null);
+  const paperRows = (items) => rows(items, (paper) => paper.title, venueAndYear, paperPage);
+  const authorRows = (items, note) => rows(items, (author) => author.name, note);
+  const directionRows = (items, note) => rows(items, (direction) => direction.title, note);
+  const paperCount = (item) => count(item.n_papers ?? item.paper_count ?? item.paper_hits, "paper", "papers");
+  const section = (title, list) => ({ title, rows: list });
+
+  const SEARCH_TYPES = {
+    paper: ["Paper", "Papers"], author: ["Author", "Authors"], cluster: ["Direction", "Directions"],
+    institution: ["Institution", "Institutions"], venue: ["Venue", "Venues"],
+    hypothesis: ["Hypothesis", "Hypotheses"], resource: ["Resource", "Resources"],
+  };
+  const searchRows = (results, mixed) =>
+    rows(
+      results,
+      (item) => item.title ?? item.name,
+      (item) => {
+        let note = paperCount(item);
+        if (item.type === "paper") note = venueAndYear(item);
+        else if (item.type === "author") note = text(item.affiliation);
+        else if (item.type === "resource") note = [label(item.resource_kind), label(item.provider)].filter(Boolean).join(" · ");
+        return [mixed ? SEARCH_TYPES[item.type]?.[0] : "", note].filter(Boolean).join(" · ");
+      },
+      (item) => item.context_url ?? item.url,
+    );
+
+  const articleBlocks = (markdown) => (text(markdown) ? markdownBlocks(markdown) : []);
+  // A card for one thing: its name, a line about it, and its long text.
+  const entity = (payload, byline, markdown, sections, expandLabel) => {
+    const blocks = articleBlocks(markdown);
+    return {
+      title: payload.title ?? payload.name,
+      byline: byline.filter(Boolean).join(" · "),
+      summary: shortSummary(blocks),
+      url: lacunaUrl(payload.url),
+      blocks,
+      sections,
+      shown: 3,
+      expandLabel,
+    };
+  };
+  // A card for a list with no page of its own.
+  const listCard = (title, total, noun, list) => ({
+    title,
+    byline: count(total, noun[0], noun[1]),
+    summary: "",
+    url: null,
+    blocks: [],
+    sections: [section("", list)],
+    shown: 5,
+    expandLabel: "Show all",
+  });
+
+  const describe = (payload) => {
+    const has = (key) => Array.isArray(payload[key]);
+    const named = text(payload.title) || text(payload.name);
+    if (payload.paper && typeof payload.paper === "object" && text(payload.paper.title)) {
+      // A full-text window names its paper under "paper".
+      const total = count(payload.total_chars, "character", "characters");
+      return entity(payload.paper, ["Full text", total], "", [], "");
+    }
+    if (payload.type === "author" && named) {
+      const profile = payload.profile && typeof payload.profile === "object" ? payload.profile : {};
+      const papers = count(payload.n_papers, "paper on Lacuna", "papers on Lacuna");
+      return {
+        ...entity(payload, [text(profile.affiliation), papers], payload.profile_markdown, [
+          section("Recent papers", paperRows(payload.papers)),
+          section("Research directions", directionRows(payload.impact_directions)),
+        ], "Read the profile"),
+        photo: photoUrl(profile.photo_url),
+      };
+    }
+    if (payload.type === "venue" && named) {
+      return entity(payload, ["Venue", count(payload.paper_count, "paper", "papers")], "", [
+        section("Representative papers", paperRows(payload.representative_papers)),
+        section("Top directions", directionRows(payload.top_clusters, paperCount)),
+        section("Top authors", authorRows(payload.top_authors, paperCount)),
+      ], "Show more");
+    }
+    if (payload.type === "direction" && named) {
+      return entity(payload, ["Research direction", paperCount(payload)], payload.summary_markdown, [
+        section("Papers", paperRows(payload.papers)),
+        section("Authors", authorRows(payload.authors ?? payload.top_author_profiles, (author) => text(author.affiliation))),
+        section("Related directions", directionRows(payload.related_directions, paperCount)),
+      ], "Read the overview");
+    }
+    if (payload.type === "hypothesis" && named) {
+      return entity(payload, ["Hypothesis"], payload.summary_markdown, [
+        section("Research directions", directionRows(payload.directions)),
+      ], "Read the hypothesis");
+    }
+    if (payload.type === "institution" && named) {
+      const size = [count(payload.n_authors, "author", "authors"), paperCount(payload)];
+      return entity(payload, ["Institution", ...size], "", [
+        section("Authors", authorRows(payload.authors, paperCount)),
+      ], "Show more");
+    }
+    if (has("results") && typeof payload.query === "string") {
+      const kind = SEARCH_TYPES[payload.type_filter]?.[1] ?? "";
+      const found = count(payload.total_results, "result", "results");
+      return {
+        ...listCard(`Search: ${payload.query}`, null, [], searchRows(payload.results, !kind)),
+        byline: [kind, found].filter(Boolean).join(" · "),
+      };
+    }
+    if (has("neighbors")) {
+      return listCard("Similar authors", null, [], authorRows(payload.neighbors));
+    }
+    if (has("papers") && !named && payload.author_id) {
+      return listCard("Papers by this author", payload.papers_total, ["paper", "papers"], paperRows(payload.papers));
+    }
+    if (has("directions") && !named && payload.author_id) {
+      const list = directionRows(payload.directions, paperCount);
+      return listCard("Directions this author works in", payload.directions_total, ["direction", "directions"], list);
+    }
+    if (has("papers") && !named && payload.cluster_id !== undefined) {
+      return listCard("Papers in this direction", payload.total, ["paper", "papers"], paperRows(payload.papers));
+    }
+    if (has("authors") && !named && payload.institution_id) {
+      const list = authorRows(payload.authors, paperCount);
+      return listCard("Authors at this institution", payload.authors_total, ["author", "authors"], list);
+    }
+    if (text(payload.provider) && text(payload.kind) && named) {
+      const facets = payload.facets && typeof payload.facets === "object" ? payload.facets : {};
+      const about = [label(payload.kind), label(payload.provider), text(facets.programming_language), text(facets.license)];
+      return {
+        ...entity(payload, about, "", [section("Papers", paperRows(payload.publications))], "Show more"),
+        summary: plainText(text(payload.summary)).slice(0, 600),
+      };
+    }
+    if (has("figures") && !named) {
+      return { ...listCard("Paper figures", null, [], []), figures: usableFigures(payload.figures), expandLabel: "" };
+    }
+    if (!named) return null;
+    // A paper. The short views carry an excerpt or the abstract instead of the summary.
+    const paper = entity(payload, [byline(payload)], payload.summary_markdown, [], "Read the summary");
+    const fallback = [payload.excerpt, payload.abstract].find((value) => text(value));
+    const embedded = paper.blocks.filter((block) => block.kind === "img" && lacunaUrl(block.url));
+    return {
+      ...paper,
+      summary: paper.summary || plainText(fallback ?? "").slice(0, 600),
+      // The figures the summary chose come first; the figure list stands in
+      // when it embeds none.
+      figures: embedded.length
+        ? embedded.map(summaryFigure)
+        : usableFigures(payload.figures ?? (payload.figure ? [payload.figure] : [])),
+      articleHasFigures: embedded.length > 0,
+      paper: payload,
+    };
+  };
+
+  // One titled list. Each row links to its page on Lacuna.
+  const listing = (title, list) => {
+    const node = document.createElement("div");
+    node.className = "listing";
+    if (title) {
+      const heading = document.createElement("h2");
+      heading.textContent = title;
+      node.append(heading);
+    }
+    const items = document.createElement("ul");
+    for (const row of list) {
+      const item = document.createElement("li");
+      item.append(row.url ? linkNode(row.text, row.url) : row.text);
+      if (row.note) {
+        const note = document.createElement("span");
+        note.className = "where";
+        note.textContent = ` · ${row.note}`;
+        item.append(note);
+      }
+      items.append(item);
+    }
+    node.append(items);
+    return node;
+  };
+
+  // The card shows the short summary with two figures or the start of one
+  // list. Expanded, it shows the whole text, its figures and every list.
   const layOut = () => {
     const context = app.getHostContext();
     const expanded = context?.displayMode === "fullscreen";
@@ -436,6 +686,8 @@
       const inset = Number(context?.safeAreaInsets?.[edge]) || 0;
       document.body.style.setProperty(`--inset-${edge}`, `${inset}px`);
     }
+    if (!card) return;
+    const hasArticle = card.blocks.length > 1;
     // Expanded, a summary that embeds its figures shows them where it puts them.
     const inPlace = expanded && hasArticle && articleHasFigures;
     const shown = inPlace ? [] : expanded ? figures.slice(0, 1) : figures.slice(0, INLINE_FIGURES);
@@ -446,9 +698,19 @@
     $("more-figures").replaceChildren(...more.map((figure) => figureNode(figure)));
     $("more-figures").classList.toggle("single", more.length === 1);
     $("more-figures").hidden = more.length === 0;
+    const sections = card.sections.filter((list) => list.rows.length);
+    const first = expanded ? null : sections[0];
+    $("short-list").replaceChildren(...(first ? [listing(first.title, first.rows.slice(0, card.shown))] : []));
+    $("short-list").hidden = !first;
+    const full = expanded ? sections.map((list) => listing(list.title, list.rows)) : [];
+    $("full-list").replaceChildren(...full);
+    $("full-list").hidden = full.length === 0;
     $("article").hidden = !(expanded && hasArticle);
     $("summary").hidden = !$("summary").textContent || (expanded && hasArticle);
-    $("expand").hidden = expanded || !canExpand || !hasArticle;
+    const hasMore =
+      hasArticle || sections.length > 1 || (sections[0]?.rows.length ?? 0) > card.shown;
+    $("expand").hidden = expanded || !canExpand || !hasMore || !card.expandLabel;
+    $("actions").hidden = $("open").hidden && $("expand").hidden;
   };
 
   // The paper result lists a few figures and may start with tables. When it
@@ -476,50 +738,33 @@
 
   const show = (result) => {
     const payload = result?.structuredContent;
-    const isObject = payload && typeof payload === "object";
-    // A full-text window names its paper under "paper"; other views are the paper.
-    const fullText = isObject && payload.paper && typeof payload.paper === "object";
-    const paper = fullText ? payload.paper : payload;
+    card = payload && typeof payload === "object" ? describe(payload) : null;
     $("loading").hidden = true;
-    $("paper").hidden = false;
-    figures = [];
-    hasArticle = false;
-    articleHasFigures = false;
-    if (!isObject || typeof paper.title !== "string") {
+    $("entity").hidden = false;
+    if (!card) {
       // A miss or an error: say so in one line, with the tool's own message.
-      setText("title", "No paper to show");
-      setText("byline", typeof payload?.message === "string" ? payload.message : "");
-      setText("summary", "");
-      $("open").hidden = true;
-      layOut();
-      return;
+      const said = (Array.isArray(result?.content) ? result.content : []).find((part) => text(part?.text));
+      card = {
+        title: "Nothing to show",
+        byline: text(payload?.message) || text(said?.text).slice(0, 300),
+        summary: "", url: null, blocks: [], sections: [], shown: 0, expandLabel: "",
+      };
     }
-    paperUrl = lacunaUrl(paper.url);
-    setText("title", paper.title);
-    $("open").hidden = !paperUrl;
-    if (fullText) {
-      const total = Number.isInteger(payload.total_chars) ? payload.total_chars : null;
-      setText("byline", total === null ? "Full text" : `Full text · ${total.toLocaleString("en")} characters`);
-      setText("summary", "");
-      layOut();
-      return;
+    figures = card.figures ?? [];
+    articleHasFigures = card.articleHasFigures ?? false;
+    setText("title", card.title);
+    setText("byline", card.byline);
+    setText("summary", card.summary);
+    $("photo").hidden = !card.photo;
+    if (card.photo) {
+      $("photo").src = card.photo;
+      $("photo").alt = `Photo of ${card.title}`;
     }
-    setText("byline", byline(paper));
-    const blocks = typeof paper.summary_markdown === "string" ? markdownBlocks(paper.summary_markdown) : [];
-    // The short views carry an excerpt or the abstract instead of the summary.
-    const fallback = [paper.excerpt, paper.abstract].find((text) => typeof text === "string" && text);
-    setText("summary", shortSummary(blocks) || plainText(fallback ?? "").slice(0, 600));
-    hasArticle = blocks.length > 1;
-    if (hasArticle) renderArticle(blocks);
-    // The figures the summary chose come first; the figure list stands in
-    // when it embeds none.
-    const embedded = blocks.filter((block) => block.kind === "img" && lacunaUrl(block.url));
-    articleHasFigures = embedded.length > 0;
-    figures = articleHasFigures
-      ? embedded.map(summaryFigure)
-      : usableFigures(paper.figures ?? (paper.figure ? [paper.figure] : []));
+    $("open").hidden = !card.url;
+    $("expand").textContent = card.expandLabel || "Show more";
+    if (card.blocks.length > 1) renderArticle(card.blocks);
     layOut();
-    if (!articleHasFigures) loadMoreFigures(paper);
+    if (card.paper && !articleHasFigures) loadMoreFigures(card.paper);
   };
 
   const applyHostContext = (context) => {
@@ -534,7 +779,10 @@
     applyHostContext(changed);
     layOut();
   };
-  $("open").onclick = () => paperUrl && app.openLink({ url: paperUrl });
+  $("open").onclick = () => card?.url && app.openLink({ url: card.url });
+  $("photo").onerror = () => {
+    $("photo").hidden = true;
+  };
   // Claude grants this only straight from a click, so nothing is awaited first.
   $("expand").onclick = () => app.requestDisplayMode({ mode: "fullscreen" }).then(layOut);
 

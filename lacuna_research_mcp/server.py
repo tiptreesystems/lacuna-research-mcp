@@ -13,10 +13,9 @@ from lacuna_research_mcp.errors import LacunaMCPError
 from lacuna_research_mcp.prompts import PROMPT_FUNCTIONS, PROMPT_TITLES
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS, TOOL_TITLES
 from lacuna_research_mcp.views import (
-    PAPER_CARD_URI,
-    TOOL_VIEWS,
+    CARD_URI,
     VIEW_MIME_TYPE,
-    paper_card_html,
+    card_html,
     view_resource_meta,
     view_tool_meta,
 )
@@ -152,20 +151,19 @@ def create_mcp() -> Any:
     )
     for tool_func in TOOL_FUNCTIONS:
         title = TOOL_TITLES[tool_func.__name__]
-        view_uri = TOOL_VIEWS.get(tool_func.__name__)
         app.tool(
             title=title,
             annotations=_read_only_tool_annotations(title),
-            meta=view_tool_meta(view_uri) if view_uri else None,
+            meta=view_tool_meta(CARD_URI),
         )(_with_tool_errors(tool_func))
     app.resource(
-        PAPER_CARD_URI,
-        name="paper_card",
-        title="Paper card",
-        description="Card view of one paper for hosts that render MCP Apps.",
+        CARD_URI,
+        name="card",
+        title="Lacuna card",
+        description="Card view of a tool result for hosts that render MCP Apps.",
         mime_type=VIEW_MIME_TYPE,
         meta=view_resource_meta(),
-    )(paper_card_html)
+    )(card_html)
     for prompt_func in PROMPT_FUNCTIONS:
         app.prompt(title=PROMPT_TITLES[prompt_func.__name__])(prompt_func)
     return app

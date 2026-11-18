@@ -13,11 +13,12 @@ from typing import Any
 # The MIME type the MCP Apps extension requires for a view resource.
 VIEW_MIME_TYPE = "text/html;profile=mcp-app"
 
-PAPER_CARD_URI = "ui://lacuna-research/paper-card"
+# One view draws the card for every tool's result.
+CARD_URI = "ui://lacuna-research/card"
 
 # A host blocks every origin a view does not declare. The card loads the MCP
 # Apps client from the first; paper figures come from Lacuna, which redirects
-# each one to its media host.
+# each one to its media host, where author photos also live.
 _VIEW_RESOURCE_ORIGINS = [
     "https://unpkg.com",
     "https://lacuna.tiptreesystems.com",
@@ -25,8 +26,8 @@ _VIEW_RESOURCE_ORIGINS = [
 ]
 
 
-def paper_card_html() -> str:
-    return resources.files(__package__).joinpath("paper_card.html").read_text(encoding="utf-8")
+def card_html() -> str:
+    return resources.files(__package__).joinpath("card.html").read_text(encoding="utf-8")
 
 
 def view_tool_meta(resource_uri: str) -> dict[str, Any]:
@@ -40,7 +41,3 @@ def view_resource_meta() -> dict[str, Any]:
     return {
         "ui": {"csp": {"resourceDomains": list(_VIEW_RESOURCE_ORIGINS)}, "prefersBorder": False}
     }
-
-
-# Tool name -> the view that renders its result.
-TOOL_VIEWS: dict[str, str] = {"get_paper": PAPER_CARD_URI}
