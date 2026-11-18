@@ -55,10 +55,11 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["lacuna_research_mcp"]
+packages = ["lacuna_research_mcp", "lacuna_research_mcp.views"]
 
 [tool.setuptools.package-data]
 lacuna_research_mcp = ["py.typed"]
+"lacuna_research_mcp.views" = ["*.html"]
 
 [tool.ruff]
 line-length = 100
