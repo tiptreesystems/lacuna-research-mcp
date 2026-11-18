@@ -77,6 +77,7 @@
     overflow-wrap: anywhere;
   }
   .listing { margin: 0 0 12px; }
+  #short-list:has(+ .actions[hidden]) .listing { margin-bottom: 0; }
   .listing h2 {
     margin: 0 0 4px;
     font-size: var(--font-text-xs-size, 12px);
@@ -580,8 +581,9 @@
     }
     if (payload.type === "direction" && named) {
       return entity(payload, ["Research direction", paperCount(payload)], payload.summary_markdown, [
+        // The people come first: the tool lists a direction's papers by title.
+        section("Leading authors", authorRows(payload.authors ?? payload.top_author_profiles, (author) => text(author.affiliation))),
         section("Papers", paperRows(payload.papers)),
-        section("Authors", authorRows(payload.authors ?? payload.top_author_profiles, (author) => text(author.affiliation))),
         section("Related directions", directionRows(payload.related_directions, paperCount)),
       ], "Read the overview");
     }
