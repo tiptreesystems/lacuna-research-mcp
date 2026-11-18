@@ -7,6 +7,8 @@ render views ignore both and use the tool result as before.
 
 from __future__ import annotations
 
+import re
+from functools import cache
 from importlib import resources
 from typing import Any
 
@@ -31,18 +33,51 @@ CARD_TOOLS = frozenset(
     }
 )
 
-# A host blocks every origin a view does not declare. The card loads the MCP
-# Apps client from the first; paper figures come from Lacuna, which redirects
-# each one to its media host, where author photos also live.
+# A host blocks every origin a view does not declare. Paper figures come from
+# Lacuna, which redirects each one to its media host, where author photos also
+# live. The card's own script is part of the document, so no other origin is
+# needed.
 _VIEW_RESOURCE_ORIGINS = [
-    "https://unpkg.com",
     "https://lacuna.tiptreesystems.com",
     "https://media.lacuna.tiptreesystems.com",
 ]
 
 
+# The MCP Apps client the card talks to its host through: the unmodified
+# dist/src/app-with-deps.js of @modelcontextprotocol/ext-apps at this version,
+# kept in vendor/ with its licence.
+_CLIENT_FILE = "vendor/mcp-ext-apps-1.7.5.js"
+_CLIENT_PLACEHOLDER = "<!-- MCP_APPS_CLIENT -->"
+_CLIENT_EXPORTS = re.compile(r"export\{([^{}]*)\};?\s*$")
+
+
+def _client_script() -> str:
+    """The client as an inline script that leaves its exports on a global.
+
+    One inline module cannot import another, so the file's closing
+    ``export{a as App,...}`` becomes ``globalThis.LacunaCardClient={App:a,...}``.
+    """
+    source = resources.files(__package__).joinpath(_CLIENT_FILE).read_text(encoding="utf-8")
+    exports = _CLIENT_EXPORTS.search(source)
+    if exports is None or "</script" in source.lower():
+        raise RuntimeError(f"{_CLIENT_FILE} is not the module the card expects")
+    names = (pair.split(" as ") for pair in exports.group(1).split(","))
+    members = ",".join(f"{exported.strip()}:{local.strip()}" for local, exported in names)
+    body = source[: exports.start()] + f"globalThis.LacunaCardClient={{{members}}};"
+    return f'<script type="module">{body}</script>'
+
+
+@cache
+def _card_document() -> str:
+    page = resources.files(__package__).joinpath("card.html").read_text(encoding="utf-8")
+    if page.count(_CLIENT_PLACEHOLDER) != 1:
+        raise RuntimeError("card.html must hold the client placeholder exactly once")
+    return page.replace(_CLIENT_PLACEHOLDER, _client_script())
+
+
 def card_html() -> str:
-    return resources.files(__package__).joinpath("card.html").read_text(encoding="utf-8")
+    """The card as one document, with the client it needs written into it."""
+    return _card_document()
 
 
 def view_tool_meta(resource_uri: str) -> dict[str, Any]:
