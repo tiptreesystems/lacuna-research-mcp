@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lacuna paper</title>
+<style>
+  html, body { margin: 0; background: transparent; }
+  body {
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: var(--font-text-sm-size, 14px);
+    line-height: var(--font-text-sm-line-height, 1.4);
+    color: var(--color-text-primary, light-dark(#141413, #faf9f5));
+  }
+  .card {
+    box-sizing: border-box;
+    padding: 14px 16px;
+    border: var(--border-width-regular, 0.5px) solid
+      var(--color-border-tertiary, light-dark(rgba(31, 30, 29, 0.15), rgba(222, 220, 209, 0.15)));
+    border-radius: var(--border-radius-xl, 12px);
+    background: var(--color-background-primary, light-dark(#ffffff, #30302e));
+  }
+  .source {
+    display: flex; align-items: center; gap: 6px;
+    font-size: var(--font-text-xs-size, 12px);
+    color: var(--color-text-tertiary, light-dark(#73726c, #9c9a92));
+    margin-bottom: 6px;
+  }
+  .mark { width: 14px; height: 14px; flex: none; }
+  h1 {
+    margin: 0 0 4px;
+    font-size: var(--font-heading-md-size, 16px);
+    line-height: var(--font-heading-md-line-height, 1.4);
+    font-weight: var(--font-weight-semibold, 600);
+    overflow-wrap: anywhere;
+  }
+  .byline {
+    margin: 0 0 8px;
+    color: var(--color-text-secondary, light-dark(#3d3d3a, #c2c0b6));
+    overflow-wrap: anywhere;
+  }
+  .summary {
+    margin: 0 0 12px;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4;
+    overflow: hidden;
+  }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  button {
+    font: inherit; cursor: pointer; min-height: 44px; padding: 0 14px;
+    border-radius: var(--border-radius-md, 8px);
+    font-weight: var(--font-weight-medium, 500);
+  }
+  button.primary {
+    border: none;
+    background: var(--color-background-inverse, light-dark(#141413, #faf9f5));
+    color: var(--color-text-inverse, light-dark(#ffffff, #141413));
+  }
+  button:focus-visible {
+    outline: 2px solid var(--color-ring-primary, light-dark(rgba(20, 20, 19, 0.7), rgba(250, 249, 245, 0.7)));
+    outline-offset: 2px;
+  }
+  @media (min-width: 480px) { button { min-height: 36px; } }
+  .skeleton span {
+    display: block; height: 12px; margin: 8px 0; border-radius: 4px;
+    background: var(--color-background-secondary, light-dark(#f5f4ed, #262624));
+  }
+  .skeleton span:nth-child(1) { width: 70%; height: 16px; }
+  .skeleton span:nth-child(2) { width: 45%; }
+  .skeleton span:nth-child(3) { width: 95%; }
+  .skeleton span:nth-child(4) { width: 80%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="source">
+    <svg class="mark" viewBox="90 0 350 420" aria-hidden="true">
+      <polygon points="100,60 100,300 220,240 220,0" fill="currentColor"/>
+      <polygon points="170,100 170,340 290,280 290,40" fill="currentColor" opacity="0.6"/>
+      <polygon points="310,180 310,420 430,360 430,120" fill="currentColor"/>
+    </svg>
+    <span id="source">Lacuna</span>
+  </div>
+  <div id="loading" class="skeleton" aria-label="Loading paper">
+    <span></span><span></span><span></span><span></span>
+  </div>
+  <div id="paper" hidden>
+    <h1 id="title"></h1>
+    <p id="byline" class="byline"></p>
+    <p id="summary" class="summary"></p>
+    <div class="actions">
+      <button id="open" class="primary" type="button">Open on Lacuna</button>
+    </div>
+  </div>
+</div>
+<script type="module">
+  import {
+    App,
+    applyDocumentTheme,
+    applyHostFonts,
+    applyHostStyleVariables,
+  } from "https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js";
+
+  const $ = (id) => document.getElementById(id);
+  const LACUNA_ORIGIN = "https://lacuna.tiptreesystems.com";
+  const VENUE_NAMES = {
+    neurips: "NeurIPS", icml: "ICML", iclr: "ICLR", cvpr: "CVPR", iccv: "ICCV", eccv: "ECCV",
+    acl: "ACL", emnlp: "EMNLP", naacl: "NAACL", aaai: "AAAI", tmlr: "TMLR", jmlr: "JMLR",
+    colt: "COLT", aistats: "AISTATS", uai: "UAI", kdd: "KDD", arxiv: "arXiv",
+  };
+
+  // Only links to Lacuna itself are offered, whatever the tool result holds.
+  const lacunaUrl = (value) => {
+    try {
+      const url = new URL(value);
+      return url.origin === LACUNA_ORIGIN ? url.href : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const plainText = (markdown) =>
+    markdown
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/[*_`]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  // The first paragraph under a "TL;DR" heading when the summary has one,
+  // otherwise the first paragraph of the summary.
+  const shortSummary = (markdown) => {
+    if (typeof markdown !== "string") return "";
+    const paragraphs = [];
+    let heading = "";
+    let lines = [];
+    const close = () => {
+      if (lines.length) paragraphs.push({ heading, text: lines.join(" ") });
+      lines = [];
+    };
+    for (const raw of markdown.split("\n")) {
+      const line = raw.trim();
+      if (line.startsWith("#")) {
+        close();
+        heading = line;
+      } else if (line) {
+        lines.push(line);
+      } else {
+        close();
+      }
+    }
+    close();
+    const chosen = paragraphs.find((p) => /tl;?dr/i.test(p.heading)) ?? paragraphs[0];
+    return chosen ? plainText(chosen.text).slice(0, 600) : "";
+  };
+
+  const byline = (paper) => {
+    const names = (Array.isArray(paper.authors) ? paper.authors : [])
+      .map((author) => (typeof author === "string" ? author : author?.name))
+      .filter((name) => typeof name === "string")
+      .filter(Boolean);
+    const shown = names.slice(0, 3).join(", ");
+    const authors = names.length > 3 ? `${shown} and ${names.length - 3} more` : shown;
+    const venueKey = typeof paper.conference === "string" ? paper.conference : "";
+    const label = typeof paper.venue_label === "string" ? paper.venue_label : "";
+    const venue = label || (VENUE_NAMES[venueKey.toLowerCase()] ?? venueKey);
+    const where = [venue, paper.year].filter(Boolean).join(" ");
+    return [authors, where].filter(Boolean).join(" · ");
+  };
+
+  const app = new App({ name: "Lacuna paper card", version: "1.0.0" });
+  let paperUrl = null;
+
+  const setText = (id, text) => {
+    $(id).textContent = text;
+    $(id).hidden = !text;
+  };
+
+  const show = (result) => {
+    const payload = result?.structuredContent;
+    const isObject = payload && typeof payload === "object";
+    // A full-text window names its paper under "paper"; other views are the paper.
+    const fullText = isObject && payload.paper && typeof payload.paper === "object";
+    const paper = fullText ? payload.paper : payload;
+    $("loading").hidden = true;
+    $("paper").hidden = false;
+    if (!isObject || typeof paper.title !== "string") {
+      // A miss or an error: say so in one line, with the tool's own message.
+      setText("title", "No paper to show");
+      setText("byline", typeof payload?.message === "string" ? payload.message : "");
+      setText("summary", "");
+      $("open").hidden = true;
+      return;
+    }
+    paperUrl = lacunaUrl(paper.url);
+    setText("title", paper.title);
+    if (fullText) {
+      const total = Number.isInteger(payload.total_chars) ? payload.total_chars : null;
+      setText("byline", total === null ? "Full text" : `Full text · ${total.toLocaleString("en")} characters`);
+      setText("summary", "");
+    } else {
+      setText("byline", byline(paper));
+      // The short views carry an excerpt or the abstract instead of the summary.
+      const fallback = [paper.excerpt, paper.abstract].find((text) => typeof text === "string" && text);
+      setText("summary", shortSummary(paper.summary_markdown) || plainText(fallback ?? "").slice(0, 600));
+    }
+    $("open").hidden = !paperUrl;
+  };
+
+  const applyHostContext = (context) => {
+    if (context?.theme) applyDocumentTheme(context.theme);
+    if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
+    if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  };
+
+  // Handlers go on before connect() so the first notifications are not missed.
+  app.ontoolresult = show;
+  app.onhostcontextchanged = applyHostContext;
+  $("open").onclick = () => paperUrl && app.openLink({ url: paperUrl });
+
+  await app.connect();
+  applyHostContext(app.getHostContext());
+</script>
+</body>
+</html>

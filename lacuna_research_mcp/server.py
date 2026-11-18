@@ -12,6 +12,14 @@ from lacuna_research_mcp.config import PACKAGE_VERSION, log_level_from_env
 from lacuna_research_mcp.errors import LacunaMCPError
 from lacuna_research_mcp.prompts import PROMPT_FUNCTIONS, PROMPT_TITLES
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS, TOOL_TITLES
+from lacuna_research_mcp.views import (
+    PAPER_CARD_URI,
+    TOOL_VIEWS,
+    VIEW_MIME_TYPE,
+    paper_card_html,
+    view_resource_meta,
+    view_tool_meta,
+)
 
 # The first paragraph is a self-contained summary that fits in the first 512
 # characters, which is all some MCP clients (e.g. Codex) surface. Scope and the
@@ -144,9 +152,20 @@ def create_mcp() -> Any:
     )
     for tool_func in TOOL_FUNCTIONS:
         title = TOOL_TITLES[tool_func.__name__]
-        app.tool(title=title, annotations=_read_only_tool_annotations(title))(
-            _with_tool_errors(tool_func)
-        )
+        view_uri = TOOL_VIEWS.get(tool_func.__name__)
+        app.tool(
+            title=title,
+            annotations=_read_only_tool_annotations(title),
+            meta=view_tool_meta(view_uri) if view_uri else None,
+        )(_with_tool_errors(tool_func))
+    app.resource(
+        PAPER_CARD_URI,
+        name="paper_card",
+        title="Paper card",
+        description="Card view of one paper for hosts that render MCP Apps.",
+        mime_type=VIEW_MIME_TYPE,
+        meta=view_resource_meta(),
+    )(paper_card_html)
     for prompt_func in PROMPT_FUNCTIONS:
         app.prompt(title=PROMPT_TITLES[prompt_func.__name__])(prompt_func)
     return app

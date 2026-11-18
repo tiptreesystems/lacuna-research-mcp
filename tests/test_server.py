@@ -69,7 +69,9 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
             self.tool_titles: list[str | None] = []
             self.tool_annotations: list[Any] = []
 
-        def tool(self, *, title: str | None = None, annotations: Any = None) -> Any:
+        def tool(
+            self, *, title: str | None = None, annotations: Any = None, meta: Any = None
+        ) -> Any:
             def register(func: Any) -> Any:
                 self.tools.append(func)
                 self.tool_titles.append(title)
@@ -79,6 +81,9 @@ def test_create_mcp_resolves_runtime_config_and_registers_tools(
             return register
 
         def prompt(self, *, title: str | None = None) -> Any:
+            return lambda func: func
+
+        def resource(self, uri: str, **kwargs: Any) -> Any:
             return lambda func: func
 
     sentinel_client = object()
@@ -143,10 +148,15 @@ def test_create_mcp_log_level_env_override(monkeypatch: pytest.MonkeyPatch) -> N
         ) -> None:
             self.log_level = log_level
 
-        def tool(self, *, title: str | None = None, annotations: Any = None) -> Any:
+        def tool(
+            self, *, title: str | None = None, annotations: Any = None, meta: Any = None
+        ) -> Any:
             return lambda func: func
 
         def prompt(self, *, title: str | None = None) -> Any:
+            return lambda func: func
+
+        def resource(self, uri: str, **kwargs: Any) -> Any:
             return lambda func: func
 
     monkeypatch.setattr(server, "_load_mcp_server", lambda: FakeMCP)
