@@ -59,7 +59,7 @@ packages = ["lacuna_research_mcp", "lacuna_research_mcp.views"]
 
 [tool.setuptools.package-data]
 lacuna_research_mcp = ["py.typed"]
-"lacuna_research_mcp.views" = ["*.html"]
+"lacuna_research_mcp.views" = ["*.html", "vendor/*"]
 
 [tool.ruff]
 line-length = 100

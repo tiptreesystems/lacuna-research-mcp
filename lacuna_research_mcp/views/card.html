@@ -188,13 +188,11 @@
     <div id="full-list" hidden></div>
   </div>
 </div>
+<!-- MCP_APPS_CLIENT -->
 <script type="module">
-  import {
-    App,
-    applyDocumentTheme,
-    applyHostFonts,
-    applyHostStyleVariables,
-  } from "https://unpkg.com/@modelcontextprotocol/ext-apps@1.7.5/dist/src/app-with-deps.js";
+  // card_html() puts the MCP Apps client in the script above this one.
+  const { App, applyDocumentTheme, applyHostFonts, applyHostStyleVariables } =
+    globalThis.LacunaCardClient;
 
   const $ = (id) => document.getElementById(id);
   const LACUNA_ORIGIN = "https://lacuna.tiptreesystems.com";
