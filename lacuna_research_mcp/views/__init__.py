@@ -13,8 +13,23 @@ from typing import Any
 # The MIME type the MCP Apps extension requires for a view resource.
 VIEW_MIME_TYPE = "text/html;profile=mcp-app"
 
-# One view draws the card for every tool's result.
+# One view draws every card.
 CARD_URI = "ui://lacuna-research/card"
+
+# The tools whose result gets a card: the ones that return one thing. A host
+# draws a card for every call, and one answer makes several search and list
+# calls, so those tools have none.
+CARD_TOOLS = frozenset(
+    {
+        "get_paper",
+        "get_author_context",
+        "get_direction",
+        "get_hypothesis",
+        "get_venue_context",
+        "get_institution_context",
+        "get_resource",
+    }
+)
 
 # A host blocks every origin a view does not declare. The card loads the MCP
 # Apps client from the first; paper figures come from Lacuna, which redirects

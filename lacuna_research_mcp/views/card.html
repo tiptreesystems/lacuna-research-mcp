@@ -507,25 +507,6 @@
   const paperCount = (item) => count(item.n_papers ?? item.paper_count ?? item.paper_hits, "paper", "papers");
   const section = (title, list) => ({ title, rows: list });
 
-  const SEARCH_TYPES = {
-    paper: ["Paper", "Papers"], author: ["Author", "Authors"], cluster: ["Direction", "Directions"],
-    institution: ["Institution", "Institutions"], venue: ["Venue", "Venues"],
-    hypothesis: ["Hypothesis", "Hypotheses"], resource: ["Resource", "Resources"],
-  };
-  const searchRows = (results, mixed) =>
-    rows(
-      results,
-      (item) => item.title ?? item.name,
-      (item) => {
-        let note = paperCount(item);
-        if (item.type === "paper") note = venueAndYear(item);
-        else if (item.type === "author") note = text(item.affiliation);
-        else if (item.type === "resource") note = [label(item.resource_kind), label(item.provider)].filter(Boolean).join(" · ");
-        return [mixed ? SEARCH_TYPES[item.type]?.[0] : "", note].filter(Boolean).join(" · ");
-      },
-      (item) => item.context_url ?? item.url,
-    );
-
   const articleBlocks = (markdown) => (text(markdown) ? markdownBlocks(markdown) : []);
   // A card for one thing: its name, a line about it, and its long text.
   const entity = (payload, byline, markdown, sections, expandLabel) => {
@@ -541,20 +522,7 @@
       expandLabel,
     };
   };
-  // A card for a list with no page of its own.
-  const listCard = (title, total, noun, list) => ({
-    title,
-    byline: count(total, noun[0], noun[1]),
-    summary: "",
-    url: null,
-    blocks: [],
-    sections: [section("", list)],
-    shown: 5,
-    expandLabel: "Show all",
-  });
-
   const describe = (payload) => {
-    const has = (key) => Array.isArray(payload[key]);
     const named = text(payload.title) || text(payload.name);
     if (payload.paper && typeof payload.paper === "object" && text(payload.paper.title)) {
       // A full-text window names its paper under "paper".
@@ -598,31 +566,6 @@
         section("Authors", authorRows(payload.authors, paperCount)),
       ], "Show more");
     }
-    if (has("results") && typeof payload.query === "string") {
-      const kind = SEARCH_TYPES[payload.type_filter]?.[1] ?? "";
-      const found = count(payload.total_results, "result", "results");
-      return {
-        ...listCard(`Search: ${payload.query}`, null, [], searchRows(payload.results, !kind)),
-        byline: [kind, found].filter(Boolean).join(" · "),
-      };
-    }
-    if (has("neighbors")) {
-      return listCard("Similar authors", null, [], authorRows(payload.neighbors));
-    }
-    if (has("papers") && !named && payload.author_id) {
-      return listCard("Papers by this author", payload.papers_total, ["paper", "papers"], paperRows(payload.papers));
-    }
-    if (has("directions") && !named && payload.author_id) {
-      const list = directionRows(payload.directions, paperCount);
-      return listCard("Directions this author works in", payload.directions_total, ["direction", "directions"], list);
-    }
-    if (has("papers") && !named && payload.cluster_id !== undefined) {
-      return listCard("Papers in this direction", payload.total, ["paper", "papers"], paperRows(payload.papers));
-    }
-    if (has("authors") && !named && payload.institution_id) {
-      const list = authorRows(payload.authors, paperCount);
-      return listCard("Authors at this institution", payload.authors_total, ["author", "authors"], list);
-    }
     if (text(payload.provider) && text(payload.kind) && named) {
       const facets = payload.facets && typeof payload.facets === "object" ? payload.facets : {};
       const about = [label(payload.kind), label(payload.provider), text(facets.programming_language), text(facets.license)];
@@ -631,8 +574,12 @@
         summary: plainText(text(payload.summary)).slice(0, 600),
       };
     }
-    if (has("figures") && !named) {
-      return { ...listCard("Paper figures", null, [], []), figures: usableFigures(payload.figures), expandLabel: "" };
+    if (Array.isArray(payload.figures) && !named) {
+      // The figures view of a paper: figures and nothing else.
+      return {
+        title: "Paper figures", byline: "", summary: "", url: null, blocks: [], sections: [],
+        shown: 0, expandLabel: "", figures: usableFigures(payload.figures),
+      };
     }
     if (!named) return null;
     // A paper. The short views carry an excerpt or the abstract instead of the summary.

@@ -13,6 +13,7 @@ from lacuna_research_mcp.errors import LacunaMCPError
 from lacuna_research_mcp.prompts import PROMPT_FUNCTIONS, PROMPT_TITLES
 from lacuna_research_mcp.tools import TOOL_FUNCTIONS, TOOL_TITLES
 from lacuna_research_mcp.views import (
+    CARD_TOOLS,
     CARD_URI,
     VIEW_MIME_TYPE,
     card_html,
@@ -154,7 +155,7 @@ def create_mcp() -> Any:
         app.tool(
             title=title,
             annotations=_read_only_tool_annotations(title),
-            meta=view_tool_meta(CARD_URI),
+            meta=view_tool_meta(CARD_URI) if tool_func.__name__ in CARD_TOOLS else None,
         )(_with_tool_errors(tool_func))
     app.resource(
         CARD_URI,
