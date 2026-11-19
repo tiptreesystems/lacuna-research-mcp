@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import AliasChoices, Field
 
 from lacuna_research_mcp.client import api_object, api_payload
 from lacuna_research_mcp.config import (
@@ -258,12 +260,83 @@ ContextView = Literal["context", "full"]
 DirectionPapersView = Literal["compact", "full"]
 
 
+def _named(canonical: str, *also: str) -> Any:
+    """Accept the other names callers use for an identifier argument.
+
+    The published schema lists only the canonical name. Models often guess a
+    shorter one (paper_id, hypothesis_id, author), and nothing is gained by
+    refusing a call whose meaning is clear.
+    """
+    return Field(validation_alias=AliasChoices(canonical, *also, "id", "url"))
+
+
+PaperRef = Annotated[
+    str,
+    _named(
+        "artifact_id_or_url",
+        "paper_id_or_url",
+        "paper_id",
+        "paper_url",
+        "paper",
+        "artifact_id",
+        "arxiv_id",
+        "doi",
+    ),
+]
+HypothesisRef = Annotated[
+    str, _named("hypothesis_id_or_url", "hypothesis_id", "hypothesis_url", "hypothesis")
+]
+DirectionRef = Annotated[
+    str | int,
+    _named(
+        "cluster_id_or_url",
+        "direction_id_or_url",
+        "direction_id",
+        "direction_url",
+        "direction",
+        "cluster_id",
+        "cluster_url",
+        "cluster",
+    ),
+]
+ResourceRef = Annotated[
+    str, _named("resource_id_or_url", "resource_id", "resource_url", "resource")
+]
+_AUTHOR_NAMES = ("author_id_or_url", "author_id", "author_url", "author_name", "author")
+AuthorRef = Annotated[str, _named(*_AUTHOR_NAMES)]
+AuthorFilterRef = Annotated[str | None, Field(validation_alias=AliasChoices(*_AUTHOR_NAMES))]
+VenueRef = Annotated[
+    str,
+    _named(
+        "venue_key_or_url",
+        "venue_id_or_url",
+        "venue_key",
+        "venue_id",
+        "venue_url",
+        "venue_name",
+        "venue",
+    ),
+]
+InstitutionRef = Annotated[
+    str,
+    _named(
+        "institution_key_or_url",
+        "institution_id_or_url",
+        "institution_key",
+        "institution_id",
+        "institution_url",
+        "institution_name",
+        "institution",
+    ),
+]
+
+
 async def search_lacuna(
     query: str,
     search_type: str = "all",
     limit: int = 10,
     offset: int = 0,
-    author_id_or_url: str | None = None,
+    author_id_or_url: AuthorFilterRef = None,
     date_from: str | None = None,
     date_to: str | None = None,
     venue: str | None = None,
@@ -517,7 +590,7 @@ async def _paper_payload(
 
 
 async def get_hypothesis(
-    hypothesis_id_or_url: str,
+    hypothesis_id_or_url: HypothesisRef,
     view: HypothesisView = "context",
 ) -> dict[str, Any]:
     """Fetch a generated novel ML/AI research proposal from Lacuna.
@@ -548,8 +621,16 @@ async def get_hypothesis(
     return payload
 
 
+def _set_cluster_number(payload: dict[str, Any], cluster_id: int | str) -> None:
+    """Report the cluster number, also when the call named the direction by page ID."""
+    if isinstance(cluster_id, int):
+        payload["cluster_id"] = cluster_id
+    else:
+        payload.setdefault("cluster_id", payload.get("id", cluster_id))
+
+
 async def get_direction(
-    cluster_id_or_url: str | int,
+    cluster_id_or_url: DirectionRef,
     view: DirectionView = "context",
 ) -> dict[str, Any]:
     """Describe one research direction: what it is, who leads it, what is nearby.
@@ -559,8 +640,7 @@ async def get_direction(
     context names the direction's leading authors, key papers and related
     directions.
 
-    Use a numeric cluster ID (for example 25005) or a direction URL ending in
-    that number.
+    Use a numeric cluster ID (for example 25005) or a Lacuna direction URL.
 
     view selects the response shape (`context` typically contains the fields
     `full` provides plus the agent-oriented summary content):
@@ -576,12 +656,12 @@ async def get_direction(
     route_template = _DIRECTION_VIEW_ROUTES[normalized_view]
     params = {"view": "compact"} if normalized_view == "context" else None
     payload = await api_payload(route_template.format(cluster_id=cluster_id), params=params)
-    payload["cluster_id"] = cluster_id
+    _set_cluster_number(payload, cluster_id)
     return _filter_embedded_papers(payload)
 
 
 async def get_direction_papers(
-    cluster_id_or_url: str | int,
+    cluster_id_or_url: DirectionRef,
     page: int = 1,
     limit: int = 24,
     view: DirectionPapersView = "compact",
@@ -606,12 +686,12 @@ async def get_direction_papers(
             "view": _DIRECTION_PAPERS_VIEW_ROUTES[normalized_view],
         },
     )
-    payload["cluster_id"] = cluster_id
+    _set_cluster_number(payload, cluster_id)
     return _filter_embedded_papers(payload)
 
 
 async def get_paper(
-    artifact_id_or_url: str,
+    artifact_id_or_url: PaperRef,
     view: PaperView = "context",
     figure_limit: int | None = None,
     include_resources: bool = True,
@@ -712,7 +792,7 @@ async def get_paper(
         raise
 
 
-async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
+async def get_resource(resource_id_or_url: ResourceRef) -> dict[str, Any]:
     """Fetch a Lacuna research resource (code repository, dataset, model, or demo).
 
     Accepts a resource artifact ID (art_...) or a Lacuna resource URL
@@ -742,7 +822,7 @@ async def get_resource(resource_id_or_url: str) -> dict[str, Any]:
 
 
 async def get_author_papers(
-    author_id_or_url: str,
+    author_id_or_url: AuthorRef,
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -762,7 +842,7 @@ async def get_author_papers(
 
 
 async def get_author_directions(
-    author_id_or_url: str,
+    author_id_or_url: AuthorRef,
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -782,7 +862,7 @@ async def get_author_directions(
 
 
 async def get_author_context(
-    author_id_or_url: str,
+    author_id_or_url: AuthorRef,
     view: ContextView = "context",
     include_neighbors: bool = False,
 ) -> dict[str, Any]:
@@ -821,7 +901,7 @@ async def get_author_context(
 
 
 async def get_author_neighbors(
-    author_id_or_url: str,
+    author_id_or_url: AuthorRef,
     limit: int = DEFAULT_AUTHOR_NEIGHBORS_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -841,7 +921,7 @@ async def get_author_neighbors(
 
 
 async def get_venue_context(
-    venue_key_or_url: str,
+    venue_key_or_url: VenueRef,
     year: int | None = None,
     view: ContextView = "context",
 ) -> dict[str, Any]:
@@ -877,7 +957,7 @@ async def get_venue_context(
 
 
 async def get_institution_context(
-    institution_key_or_url: str,
+    institution_key_or_url: InstitutionRef,
     view: ContextView = "context",
 ) -> dict[str, Any]:
     """Describe the research output of a university, lab or company.
@@ -910,7 +990,7 @@ async def get_institution_context(
 
 
 async def get_institution_authors(
-    institution_key_or_url: str,
+    institution_key_or_url: InstitutionRef,
     limit: int = DEFAULT_AUTHOR_LIST_LIMIT,
     offset: int = 0,
 ) -> dict[str, Any]:

@@ -90,11 +90,24 @@ def extract_work_page_id(value: str) -> str | None:
     return None
 
 
-def extract_cluster_id(value: str | int) -> int:
+_DIRECTION_PAGE_ID = r"(?:txn|rdr)_[0-9a-fA-F]+"
+
+
+def extract_cluster_id(value: str | int) -> int | str:
+    """Return a cluster number, or the page ID a direction URL carries.
+
+    Direction pages live at /direction/<slug>/txn_... (or the stable rdr_...
+    ID); older links end in the cluster number. The API accepts all three.
+    """
     if isinstance(value, int):
         cluster_id = value
     else:
         text = str(value).strip()
+        page_id = re.search(
+            rf"/(?:direction|cluster)/(?:[^/?#]+/)?({_DIRECTION_PAGE_ID})(?:[/?#]|$)", text
+        ) or re.fullmatch(rf"({_DIRECTION_PAGE_ID})", text)
+        if page_id:
+            return page_id.group(1).lower()
         match = re.search(r"/(?:direction|cluster)/[^/?#]*?(\d+)(?:[/?#]|$)", text)
         if match:
             cluster_id = int(match.group(1))
