@@ -216,6 +216,7 @@
   };
   const lacunaUrl = (value) => urlOn(value, [LACUNA_ORIGIN]);
   const photoUrl = (value) => urlOn(value, [LACUNA_ORIGIN, MEDIA_ORIGIN]);
+  const figureUrl = photoUrl;
 
   // A link to a Lacuna page. The host opens it; the frame itself cannot navigate.
   const linkNode = (text, url) => {
@@ -414,7 +415,7 @@
   // version sits on the same page, so it is dropped.
   const usableFigures = (figures) => {
     const usable = (Array.isArray(figures) ? figures : []).filter(
-      (figure) => figure && typeof figure === "object" && lacunaUrl(figure.url),
+      (figure) => figure && typeof figure === "object" && figureUrl(figure.url),
     );
     const rank = (figure) =>
       figure.kind !== "figure" ? 2 : figure.caption_origin === "extracted" ? 1 : 0;
@@ -448,7 +449,7 @@
     // A caption Lacuna wrote says what the figure shows; an extracted one only names the page.
     const caption =
       figure.caption_origin !== "extracted" && typeof figure.caption === "string" ? figure.caption : "";
-    image.src = lacunaUrl(figure.url);
+    image.src = figureUrl(figure.url);
     image.alt = typeof figure.accessibility_alt === "string" ? figure.accessibility_alt : label;
     image.onerror = () => {
       node.remove();
@@ -520,6 +521,12 @@
       expandLabel,
     };
   };
+  // The preview view names its one figure by `src` and `alt`.
+  const previewFigure = (figure) =>
+    figure && typeof figure === "object"
+      ? { ...figure, url: figure.url ?? figure.src, kind: figure.kind ?? "figure",
+          accessibility_alt: figure.accessibility_alt ?? figure.alt }
+      : null;
   const describe = (payload) => {
     const named = text(payload.title) || text(payload.name);
     if (payload.paper && typeof payload.paper === "object" && text(payload.paper.title)) {
@@ -582,6 +589,9 @@
     if (!named) return null;
     // A paper. The short views carry an excerpt or the abstract instead of the summary.
     const paper = entity(payload, [byline(payload)], payload.summary_markdown, [], "Read the summary");
+    // The preview view carries no page link; /paper/<id> redirects to the paper's page.
+    const id = text(payload.artifact_id) || text(payload.id);
+    if (!paper.url && id.startsWith("art_")) paper.url = `${LACUNA_ORIGIN}/paper/${id}`;
     const fallback = [payload.excerpt, payload.abstract].find((value) => text(value));
     const embedded = paper.blocks.filter((block) => block.kind === "img" && lacunaUrl(block.url));
     return {
@@ -591,7 +601,7 @@
       // when it embeds none.
       figures: embedded.length
         ? embedded.map(summaryFigure)
-        : usableFigures(payload.figures ?? (payload.figure ? [payload.figure] : [])),
+        : usableFigures(payload.figures ?? (payload.figure ? [previewFigure(payload.figure)] : [])),
       articleHasFigures: embedded.length > 0,
       paper: payload,
     };
@@ -683,6 +693,25 @@
     }
   };
 
+  // A short view (ChatGPT asks for view="preview") has no summary to expand
+  // and few figures: ask Lacuna for the paper's default view and draw that.
+  let upgraded = null;
+  const upgradePreview = async (paper) => {
+    const id = paper.artifact_id ?? paper.id;
+    if (text(paper.summary_markdown) || typeof id !== "string" || upgraded === id) return false;
+    if (!app.getHostCapabilities()?.serverTools) return false;
+    upgraded = id;
+    try {
+      const result = await app.callServerTool({ name: "get_paper", arguments: { artifact_id_or_url: id } });
+      const full = result?.structuredContent;
+      if (!full || typeof full !== "object" || !text(full.summary_markdown)) return false;
+      show({ structuredContent: full });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const show = (result) => {
     const payload = result?.structuredContent;
     card = payload && typeof payload === "object" ? describe(payload) : null;
@@ -711,7 +740,12 @@
     $("expand").textContent = card.expandLabel || "Show more";
     if (card.blocks.length > 1) renderArticle(card.blocks);
     layOut();
-    if (card.paper && !articleHasFigures) loadMoreFigures(card.paper);
+    if (card.paper) {
+      const paper = card.paper;
+      upgradePreview(paper).then((done) => {
+        if (!done && !articleHasFigures) loadMoreFigures(paper);
+      });
+    }
   };
 
   const applyHostContext = (context) => {
