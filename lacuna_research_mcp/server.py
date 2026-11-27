@@ -27,7 +27,7 @@ from lacuna_research_mcp.views import (
 SERVER_INSTRUCTIONS = (
     "Lacuna is a read-only knowledge graph of machine learning and AI research "
     "from Tiptree Systems: papers, research directions (clusters), authors, "
-    "venues, institutions, generated hypotheses, and paper-linked resources "
+    "venues, institutions, benchmarks, hypotheses, and paper-linked resources "
     "(code, datasets, models). Workflow: call search_lacuna first, then pass the "
     "IDs or URLs it returns to the detail tools. When a Lacuna entity materially "
     "informs an answer, cite its canonical Lacuna URL so the user can inspect "
@@ -45,6 +45,9 @@ SERVER_INSTRUCTIONS = (
     'view="fulltext" reads the paper itself.'
     '\n- Literature on a topic: search_lacuna(search_type="paper"), then '
     "get_paper on the few results that matter."
+    "\n- Empirical benchmarks, leaderboards or SOTA numbers: search_benchmarks "
+    '(or search_lacuna(search_type="benchmark")), then get_benchmark_results '
+    "for protocol-matched cohorts and all papers reporting scores on it."
     '\n- Who works on a topic: search_lacuna(search_type="cluster") to find the '
     "research direction, then get_direction for its leading authors. Use "
     "get_author_context for one person and get_author_neighbors for similar "
