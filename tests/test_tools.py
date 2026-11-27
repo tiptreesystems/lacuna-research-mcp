@@ -720,6 +720,7 @@ async def test_benchmark_tools_and_search_type(monkeypatch: pytest.MonkeyPatch) 
 
     res_det = await tools.get_benchmark_results(
         "https://lacuna.tiptreesystems.com/benchmark/smellnet",
+        task="instance-segmentation",
         split="test",
         role="proposed",
         limit=20,
@@ -727,7 +728,7 @@ async def test_benchmark_tools_and_search_type(monkeypatch: pytest.MonkeyPatch) 
     assert res_det["benchmark"]["slug"] == "smellnet"
     assert calls[1] == (
         "/api/v1/benchmarks/smellnet",
-        {"split": "test", "role": "proposed", "sort": "score", "limit": 20, "offset": 0},
+        {"task": "instance-segmentation", "split": "test", "role": "proposed", "sort": "score", "limit": 20, "offset": 0},
     )
 
     with pytest.raises(ValueError, match="Invalid sort"):

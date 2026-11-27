@@ -1091,6 +1091,7 @@ async def search_benchmarks(
 
 async def get_benchmark_results(
     benchmark_id_or_url: BenchmarkRef,
+    task: str = "",
     metric: str = "",
     split: str = "",
     regime: str = "",
@@ -1100,19 +1101,22 @@ async def get_benchmark_results(
     limit: int = 50,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Fetch protocol-matched comparable cohorts and all reported paper scores
-    for a benchmark.
+    """Fetch task-first protocol-matched comparable cohorts and all reported paper
+    scores for a benchmark.
 
-    Accepts a benchmark slug (e.g. "smellnet", "imagenet-1k", "gsm8k"), an alias
-    ("IN-1K", "GSM-8K"), a benchmark ID ("bmk_..."), or a /benchmark/<slug> URL.
+    Accepts a benchmark slug (e.g. "smellnet", "imagenet-1k", "coco", "gsm8k"),
+    an alias ("IN-1K", "MS-COCO", "GSM-8K"), a benchmark ID ("bmk_..."), or a
+    /benchmark/<slug> URL.
 
     Returns:
     - `benchmark`, `aliases`, `variants` (sibling splits/corruptions in the same
-      benchmark family), and `facets` (available metrics, splits, regimes, roles).
-    - `cohorts`: comparable evaluation series (excluding quoted baselines) with
-      each paper's method, score, year/published_date, `paper_id` (pass to
-      get_paper), and verbatim source quote.
-    - `observations`: paginated observations filtered by metric, split, regime,
+      benchmark family), and `facets` (available tasks, metrics, splits, regimes, roles).
+    - `cohorts`: task-first comparable evaluation series (excluding quoted baselines
+      and ablations) with each paper's method, score, year/published_date,
+      `setting_tags` (backbone, params, FLOPs, FPS), `paper_id` (pass to get_paper),
+      and verbatim source quote.
+    - `observations`: paginated observations filtered by task (e.g.
+      "object-detection" vs "instance-segmentation"), metric, split, regime,
       role (proposed | baseline | ablation | unclear), or provenance (measured |
       quoted | unclear), sorted by `score` (default, best first) or `year`.
     """
@@ -1136,6 +1140,8 @@ async def get_benchmark_results(
         "limit": limit,
         "offset": offset,
     }
+    if task.strip():
+        params["task"] = task.strip()
     if metric.strip():
         params["metric"] = metric.strip()
     if split.strip():
