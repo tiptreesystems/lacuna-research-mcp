@@ -70,6 +70,26 @@ def extract_resource_id(value: str) -> str:
     )
 
 
+def extract_benchmark_identifier(value: str) -> str:
+    """Return a benchmark ID, slug, or alias from a bare string or /benchmark/<slug> URL."""
+    value = value.strip()
+    if not value:
+        raise ValueError("Benchmark identifier must not be empty")
+    match = re.search(r"/benchmark/([^?#]+)", value)
+    if match:
+        parts = [
+            unquote(part)
+            for part in match.group(1).strip("/").split("/")
+            if part and part not in {"md", "csv"}
+        ]
+        if parts:
+            return parts[0]
+        raise ValueError(f"Invalid benchmark id or URL: {value!r}")
+    if _looks_like_url_or_path(value):
+        raise ValueError(f"Invalid benchmark id or URL: {value!r}")
+    return value
+
+
 def extract_work_page_id(value: str) -> str | None:
     """Return the Work ID or readable name a Work page address carries.
 

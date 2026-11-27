@@ -683,3 +683,52 @@ async def test_institution_authors_rejects_invalid_pagination(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         await tools.get_institution_authors("graph_lab", limit=limit, offset=offset)
+
+
+async def test_benchmark_tools_and_search_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    from lacuna_research_mcp.ids import extract_benchmark_identifier
+
+    assert extract_benchmark_identifier("smellnet") == "smellnet"
+    assert (
+        extract_benchmark_identifier("https://lacuna.tiptreesystems.com/benchmark/smellnet/md")
+        == "smellnet"
+    )
+    assert tools._normalize_search_type("benchmarks") == "benchmark"
+
+    calls: list[tuple[str, dict[str, Any] | None]] = []
+
+    async def fake_api_payload(
+        path: str, *, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        calls.append((path, params))
+        if path == "/api/v1/benchmarks":
+            return {"items": [{"slug": "smellnet", "paper_count": 2}], "total": 1}
+        return {
+            "benchmark": {"slug": "smellnet", "paper_count": 2},
+            "cohorts": [],
+            "observations": {"items": [], "total": 0},
+        }
+
+    monkeypatch.setattr(tools, "api_payload", fake_api_payload)
+
+    res_list = await tools.search_benchmarks("SmellNet classification", sort="trending", limit=10)
+    assert res_list["items"][0]["slug"] == "smellnet"
+    assert calls[0] == (
+        "/api/v1/benchmarks",
+        {"q": "SmellNet classification", "sort": "trending", "limit": 10, "offset": 0},
+    )
+
+    res_det = await tools.get_benchmark_results(
+        "https://lacuna.tiptreesystems.com/benchmark/smellnet",
+        split="test",
+        role="proposed",
+        limit=20,
+    )
+    assert res_det["benchmark"]["slug"] == "smellnet"
+    assert calls[1] == (
+        "/api/v1/benchmarks/smellnet",
+        {"split": "test", "role": "proposed", "sort": "score", "limit": 20, "offset": 0},
+    )
+
+    with pytest.raises(ValueError, match="Invalid sort"):
+        await tools.get_benchmark_results("smellnet", sort="alphabetical")

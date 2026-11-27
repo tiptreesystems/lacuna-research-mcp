@@ -18,6 +18,7 @@ from lacuna_research_mcp.config import (
 from lacuna_research_mcp.errors import RESOURCE_LOOKUP_HINT, LacunaMCPError
 from lacuna_research_mcp.ids import (
     external_paper_identifier,
+    extract_benchmark_identifier,
     extract_cluster_id,
     extract_hypothesis_id,
     extract_paper_id,
@@ -37,7 +38,7 @@ _WORK_INTERNAL_FIELDS = frozenset(
         "matched_artifact_id",
     }
 )
-_OMIT_WHEN_EMPTY = frozenset({"resources", "versions"})
+_OMIT_WHEN_EMPTY = frozenset({"resources", "versions", "benchmarks"})
 
 _SEARCH_TYPE_ALIASES = {
     "all": "all",
@@ -61,6 +62,8 @@ _SEARCH_TYPE_ALIASES = {
     "proposals": "hypothesis",
     "resource": "resource",
     "resources": "resource",
+    "benchmark": "benchmark",
+    "benchmarks": "benchmark",
 }
 
 _SEARCH_RANKING_PROFILES = {
@@ -77,11 +80,13 @@ _SEARCH_RANKING_PROFILES = {
 # it is never rejected.
 _RANKING_PROFILE_UNSUPPORTED_TYPES: dict[str, tuple[frozenset[str], str]] = {
     "bm25_title_abstract": (
-        frozenset({"author", "institution"}),
-        "author and institution records have no title or abstract fields",
+        frozenset({"author", "institution", "benchmark"}),
+        "author, institution, and benchmark records have no paper title or abstract fields",
     ),
     "semantic": (
-        frozenset({"author", "institution", "cluster", "hypothesis", "venue", "resource"}),
+        frozenset(
+            {"author", "institution", "cluster", "hypothesis", "venue", "resource", "benchmark"}
+        ),
         "only papers have semantic embeddings",
     ),
 }
@@ -329,6 +334,17 @@ InstitutionRef = Annotated[
         "institution",
     ),
 ]
+BenchmarkRef = Annotated[
+    str,
+    _named(
+        "benchmark_id_or_url",
+        "benchmark",
+        "benchmark_id",
+        "benchmark_slug",
+        "benchmark_url",
+        "slug",
+    ),
+]
 
 
 async def search_lacuna(
@@ -346,16 +362,18 @@ async def search_lacuna(
     resource_kind: str | list[str] | None = None,
     provider: str | list[str] | None = None,
 ) -> dict[str, Any]:
-    """Search Lacuna's ML/AI corpus for papers, research directions, authors,
-    venues, institutions, novel research hypotheses, and research resources
-    (code repositories, datasets, models, and demos linked to papers).
+    """Search Lacuna's ML/AI corpus for papers, benchmarks, research directions,
+    authors, venues, institutions, novel research hypotheses, and research
+    resources (code repositories, datasets, models, and demos linked to papers).
 
     Start here for any question without an ID. Set search_type to what the
-    question is about: paper for literature; cluster for a research direction
-    ("who works on X", "what is the state of X"); author, institution or venue
-    for a person, a lab or a conference; hypothesis for open research ideas;
+    question is about: paper for literature; benchmark for empirical ML
+    benchmarks and leaderboards; cluster for a research direction ("who works
+    on X", "what is the state of X"); author, institution or venue for a
+    person, a lab or a conference; hypothesis for open research ideas;
     resource for code, datasets and models. Then pass a result's id or url to
-    the matching detail tool.
+    the matching detail tool (get_paper, get_benchmark_results, get_direction,
+    etc.).
 
     A query that is an arXiv ID, a DOI, or an arXiv, DOI or OpenReview URL
     returns that exact paper. Paper results carry `identifiers` (arXiv ID, DOI,
@@ -364,10 +382,11 @@ async def search_lacuna(
     For novel ML/AI research ideas, use search_type="hypothesis", then
     get_hypothesis on promising results.
 
-    search_type accepts all, cluster, paper, author, institution, venue,
-    hypothesis, or resource. Use paper for literature and get_paper to read a
-    result. Use other sources for biographies, news, and non-research web
-    content.
+    search_type accepts all, cluster, paper, benchmark, author, institution,
+    venue, hypothesis, or resource. Use paper for literature and get_paper to
+    read a result; use benchmark or search_benchmarks / get_benchmark_results
+    for reported scores across papers. Use other sources for biographies, news,
+    and non-research web content.
 
     Resources: search_type="resource" searches GitHub repositories, Hugging
     Face datasets/models, and Zenodo records that Lacuna has linked to at least
@@ -1023,8 +1042,122 @@ def _validate_collection_page(*, limit: int, offset: int, max_limit: int) -> Non
         raise ValueError("offset must be greater than or equal to 0")
 
 
+_BENCHMARK_LIST_SORTS = frozenset({"overview", "trending", "papers", "observations", "name"})
+_BENCHMARK_OBS_SORTS = frozenset({"score", "year"})
+_BENCHMARK_ROLES = frozenset({"proposed", "baseline", "ablation", "unclear"})
+_BENCHMARK_PROVENANCES = frozenset({"measured", "quoted", "unclear"})
+
+
+async def search_benchmarks(
+    query: str = "",
+    modality: str = "",
+    task: str = "",
+    family: str = "",
+    sort: str = "papers",
+    limit: int = 25,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Search canonical ML/AI benchmarks and evaluation datasets in Lacuna.
+
+    Resolves aliases (such as IN-1K, GSM-8K, MS-COCO, SmellNet) and returns
+    paper_count, recent_paper_count (2025-2026), observation_count, default_task,
+    and modality. Pass a result's `slug` or `url` to get_benchmark_results for
+    protocol-matched cohorts and reported paper scores.
+
+    sort accepts papers (default), trending (2025-2026 momentum), observations,
+    name, or overview.
+    """
+    _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
+    norm_sort = (sort or "papers").strip().lower()
+    if norm_sort not in _BENCHMARK_LIST_SORTS:
+        valid = ", ".join(sorted(_BENCHMARK_LIST_SORTS))
+        raise ValueError(f"Invalid sort {sort!r}. Valid values: {valid}")
+    params: dict[str, Any] = {
+        "sort": norm_sort,
+        "limit": limit,
+        "offset": offset,
+    }
+    if query.strip():
+        params["q"] = query.strip()
+    if modality.strip():
+        params["modality"] = modality.strip()
+    if task.strip():
+        params["task"] = task.strip()
+    if family.strip():
+        params["family"] = family.strip()
+    payload = await api_payload("/api/v1/benchmarks", params=params)
+    return _filter_embedded_papers(payload)
+
+
+async def get_benchmark_results(
+    benchmark_id_or_url: BenchmarkRef,
+    metric: str = "",
+    split: str = "",
+    regime: str = "",
+    role: str = "",
+    provenance: str = "",
+    sort: str = "score",
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Fetch protocol-matched comparable cohorts and all reported paper scores
+    for a benchmark.
+
+    Accepts a benchmark slug (e.g. "smellnet", "imagenet-1k", "gsm8k"), an alias
+    ("IN-1K", "GSM-8K"), a benchmark ID ("bmk_..."), or a /benchmark/<slug> URL.
+
+    Returns:
+    - `benchmark`, `aliases`, `variants` (sibling splits/corruptions in the same
+      benchmark family), and `facets` (available metrics, splits, regimes, roles).
+    - `cohorts`: comparable evaluation series (excluding quoted baselines) with
+      each paper's method, score, year/published_date, `paper_id` (pass to
+      get_paper), and verbatim source quote.
+    - `observations`: paginated observations filtered by metric, split, regime,
+      role (proposed | baseline | ablation | unclear), or provenance (measured |
+      quoted | unclear), sorted by `score` (default, best first) or `year`.
+    """
+    _validate_collection_page(limit=limit, offset=offset, max_limit=AUTHOR_COLLECTION_MAX_LIMIT)
+    norm_sort = (sort or "score").strip().lower()
+    if norm_sort not in _BENCHMARK_OBS_SORTS:
+        valid = ", ".join(sorted(_BENCHMARK_OBS_SORTS))
+        raise ValueError(f"Invalid sort {sort!r}. Valid values: {valid}")
+    norm_role = role.strip().lower()
+    if norm_role and norm_role not in _BENCHMARK_ROLES:
+        valid = ", ".join(sorted(_BENCHMARK_ROLES))
+        raise ValueError(f"Invalid role {role!r}. Valid values: {valid}")
+    norm_prov = provenance.strip().lower()
+    if norm_prov and norm_prov not in _BENCHMARK_PROVENANCES:
+        valid = ", ".join(sorted(_BENCHMARK_PROVENANCES))
+        raise ValueError(f"Invalid provenance {provenance!r}. Valid values: {valid}")
+
+    identifier = extract_benchmark_identifier(benchmark_id_or_url)
+    params: dict[str, Any] = {
+        "sort": norm_sort,
+        "limit": limit,
+        "offset": offset,
+    }
+    if metric.strip():
+        params["metric"] = metric.strip()
+    if split.strip():
+        params["split"] = split.strip()
+    if regime.strip():
+        params["regime"] = regime.strip()
+    if norm_role:
+        params["role"] = norm_role
+    if norm_prov:
+        params["provenance"] = norm_prov
+
+    payload = await api_payload(
+        f"/api/v1/benchmarks/{path_segment(identifier)}",
+        params=params,
+    )
+    return _filter_embedded_papers(payload)
+
+
 TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
     search_lacuna,
+    search_benchmarks,
+    get_benchmark_results,
     get_hypothesis,
     get_direction,
     get_direction_papers,
@@ -1042,6 +1175,8 @@ TOOL_FUNCTIONS: tuple[Callable[..., Any], ...] = (
 # Human-readable titles shown by MCP clients, keyed by tool function name.
 TOOL_TITLES: dict[str, str] = {
     "search_lacuna": "Search Lacuna",
+    "search_benchmarks": "Search Benchmarks",
+    "get_benchmark_results": "Get Benchmark Results",
     "get_hypothesis": "Get Research Proposal",
     "get_direction": "Get Research Direction",
     "get_direction_papers": "List Direction Papers",
